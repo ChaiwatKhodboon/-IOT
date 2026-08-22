@@ -1,0 +1,18 @@
+const express = require('express');
+const path = require('node:path');
+const auth = require('./routes/auth');
+const equipment = require('./routes/equipment');
+const loans = require('./routes/loans');
+const dashboard = require('./routes/dashboard');
+const app = express();
+app.disable('x-powered-by');
+app.use(express.json({ limit: '100kb' }));
+app.use('/api/auth', auth);
+app.use('/api/equipment', equipment);
+app.use('/api/loans', loans);
+app.use('/api/dashboard', dashboard);
+app.get('/api/health', (_req,res) => res.json({ status:'ok' }));
+app.use(express.static(path.join(__dirname, '..', 'public')));
+app.get('*splat', (_req,res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
+app.use((error, _req, res, _next) => { console.error(error); res.status(500).json({ message: 'เกิดข้อผิดพลาดภายในระบบ' }); });
+module.exports = app;
