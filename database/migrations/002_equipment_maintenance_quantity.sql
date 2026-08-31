@@ -1,0 +1,2 @@
+ALTER TABLE equipment
+  ADD COLUMN IF NOT EXISTS maintenance_quantity INTEGER NOT NULL DEFAULT 0;

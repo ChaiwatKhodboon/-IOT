@@ -147,15 +147,12 @@ class _AuthPageState extends State<AuthPage> {
                       borderRadius: BorderRadius.circular(50),
                       border: Border.all(color: Colors.white, width: 7),
                     ),
-                    child: const Center(
-                      child: Text(
-                        'IO',
-                        style: TextStyle(
-                          color: green,
-                          fontSize: 27,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset(
+                      'assets/IT.jpg',
+                      width: 94,
+                      height: 94,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
@@ -259,6 +256,8 @@ class _HomePageState extends State<HomePage> {
   bool loading = false;
   Map<String, dynamic> stats = {};
   List equipment = [], loans = [];
+  final Map<int, int> cart = {};
+  String equipmentQuery = '', loanQuery = '';
   bool get admin => widget.user['role'] == 'admin';
   @override
   void initState() {
@@ -324,8 +323,8 @@ class _HomePageState extends State<HomePage> {
               label: 'ยืม',
             ),
             NavigationDestination(
-              icon: Icon(Icons.inventory_2_outlined),
-              label: 'อุปกรณ์',
+              icon: Icon(Icons.assignment_return_outlined),
+              label: 'คืน',
             ),
             NavigationDestination(icon: Icon(Icons.history), label: 'ประวัติ'),
             NavigationDestination(
@@ -341,13 +340,17 @@ class _HomePageState extends State<HomePage> {
             : [
               dashboard(),
               inventory(borrow: true),
-              inventory(),
+              returns(),
               tracking(),
               profile(),
             ];
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
+        leading: Padding(
+          padding: const EdgeInsets.all(9),
+          child: ClipOval(child: Image.asset('assets/IT.jpg', fit: BoxFit.cover)),
+        ),
         title: const Text(
           'ระบบยืม-คืน อุปกรณ์ IoT',
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
@@ -366,6 +369,15 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: (v) => setState(() => index = v),
         destinations: destinations,
       ),
+      floatingActionButton: !admin && index == 1 && cart.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: checkout,
+              backgroundColor: dark,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.shopping_basket_outlined),
+              label: Text('ตะกร้า ${cart.values.fold<int>(0, (a, b) => a + b)} ชิ้น'),
+            )
+          : null,
     );
   }
 
@@ -398,7 +410,7 @@ class _HomePageState extends State<HomePage> {
             stat('อุปกรณ์ทั้งหมด', stats['total']),
             stat('พร้อมใช้งาน', stats['available'], green),
             stat('ถูกยืมอยู่', stats['activeLoans'], orange),
-            stat('มีปัญหา', stats['issueReports'], red),
+            stat('ชำรุด/รอซ่อม', stats['maintenance'], red),
           ],
         ),
         const Section('ความเคลื่อนไหวล่าสุด'),
@@ -426,6 +438,15 @@ class _HomePageState extends State<HomePage> {
     borrow ? 'ยืมอุปกรณ์' : 'คลังอุปกรณ์',
     borrow ? 'เลือกอุปกรณ์ที่พร้อมใช้งาน' : 'จัดการและตรวจสอบอุปกรณ์',
     [
+      TextField(
+        onChanged: (value) => setState(() => equipmentQuery = value.trim().toLowerCase()),
+        decoration: InputDecoration(
+          hintText: 'ค้นหาด้วยชื่อ รหัส หรือหมวดหมู่...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: equipmentQuery.isEmpty ? null : const Icon(Icons.filter_alt_outlined),
+        ),
+      ),
+      const SizedBox(height: 10),
       if (admin && !borrow)
         Align(
           alignment: Alignment.centerRight,
@@ -435,7 +456,11 @@ class _HomePageState extends State<HomePage> {
             label: const Text('เพิ่ม'),
           ),
         ),
-      ...equipment.map((x) => equipmentCard(x, borrow)),
+      ...equipment.where((x) {
+        if (equipmentQuery.isEmpty) return true;
+        return '${x['name']} ${x['code']} ${x['category']}'.toLowerCase().contains(equipmentQuery);
+      }).map((x) => equipmentCard(x, borrow)),
+      if (borrow && cart.isNotEmpty) const SizedBox(height: 76),
     ],
   );
   Widget equipmentCard(dynamic x, bool borrow) => Card(
@@ -459,6 +484,14 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    status(
+                      x['status'] == 'retired'
+                          ? 'retired'
+                          : (x['maintenanceQuantity'] ?? 0) > 0
+                          ? 'maintenance'
+                          : 'available',
+                    ),
+                    const SizedBox(height: 3),
                     Text(
                       '${x['name']}',
                       style: const TextStyle(
@@ -471,39 +504,54 @@ class _HomePageState extends State<HomePage> {
                       style: const TextStyle(fontSize: 10, color: muted),
                     ),
                     Text(
-                      '${x['category']} · คงเหลือ ${x['availableQuantity']}/${x['totalQuantity']} ชิ้น',
+                      '${x['category']} · ชำรุด ${x['maintenanceQuantity'] ?? 0} ชิ้น · ยืมได้ ${x['availableQuantity']} ชิ้น',
                       style: const TextStyle(fontSize: 11, color: muted),
                     ),
                   ],
                 ),
               ),
-              Column(
-                children: [
-                  status('${x['status']}'),
-                  if (admin && !borrow)
-                    IconButton(
-                      tooltip: 'ลบอุปกรณ์',
-                      onPressed: () => deleteEquipment(x),
-                      icon: const Icon(Icons.delete_outline, color: red),
-                    ),
-                ],
-              ),
+              if (admin && !borrow)
+                IconButton(
+                  tooltip: 'ลบอุปกรณ์',
+                  onPressed: () => deleteEquipment(x),
+                  icon: const Icon(Icons.delete_outline, color: red),
+                ),
             ],
           ),
           if (borrow &&
-              x['status'] == 'available' &&
+              x['status'] != 'retired' &&
               x['availableQuantity'] > 0)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => borrowItem(x),
-                child: const Text('ยืม 1 ชิ้น'),
-              ),
+            Row(
+              children: [
+                IconButton.filledTonal(
+                  onPressed: (cart[x['id']] ?? 0) > 0 ? () => setCart(x, (cart[x['id']] ?? 0) - 1) : null,
+                  icon: const Icon(Icons.remove),
+                ),
+                Expanded(
+                  child: Text('${cart[x['id']] ?? 0} ชิ้น', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                IconButton.filled(
+                  onPressed: (cart[x['id']] ?? 0) < x['availableQuantity'] ? () => setCart(x, (cart[x['id']] ?? 0) + 1) : null,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
             ),
         ],
       ),
     ),
   );
+  Widget returns() {
+    final active = loans.where((x) => x['status'] == 'borrowed').toList();
+    return page('คืนอุปกรณ์', 'เลือกอุปกรณ์ที่ต้องการคืน', [
+      TextField(
+        onChanged: (value) => setState(() => loanQuery = value.trim().toLowerCase()),
+        decoration: const InputDecoration(hintText: 'ค้นหาอุปกรณ์ที่กำลังยืม...', prefixIcon: Icon(Icons.search)),
+      ),
+      const SizedBox(height: 10),
+      if (active.isEmpty) const Empty(text: 'ไม่มีอุปกรณ์ที่กำลังยืม'),
+      ...active.where((x) => loanQuery.isEmpty || '${x['equipmentName']} ${x['equipmentCode']}'.toLowerCase().contains(loanQuery)).map((x) => loanCard(x, canReturn: true)),
+    ]);
+  }
   Widget tracking() => page(
     admin ? 'ติดตามการยืม' : 'ประวัติการใช้อุปกรณ์',
     admin ? 'ตรวจสอบว่าใครกำลังยืมอุปกรณ์' : 'รายการยืม-คืนของคุณ',
@@ -611,7 +659,12 @@ class _HomePageState extends State<HomePage> {
             'abnormal',
             'lost',
           ].contains(x['returnCondition']);
-          return hasBorrowRemark || hasReturnRemark || hasDamage;
+          final repairable = [
+            'damaged',
+            'abnormal',
+          ].contains(x['returnCondition']);
+          return (!repairable || x['repairedAt'] == null) &&
+              (hasBorrowRemark || hasReturnRemark || hasDamage);
         }).toList();
     final cards =
         issues.map<Widget>((x) {
@@ -642,6 +695,15 @@ class _HomePageState extends State<HomePage> {
                     color: const Color(0xfffff8eb),
                     child: Text('${x['returnRemark'] ?? x['borrowRemark']}'),
                   ),
+                  if (['damaged', 'abnormal'].contains(x['returnCondition']))
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => completeRepair(x),
+                        icon: const Icon(Icons.check),
+                        label: const Text('เสร็จสิ้น'),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -747,29 +809,157 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> returnItem(dynamic x) async {
-    final condition = await showDialog<String>(
+  void setCart(dynamic item, int quantity) {
+    final id = item['id'] as int;
+    final maximum = item['availableQuantity'] as int;
+    setState(() {
+      if (quantity <= 0) {
+        cart.remove(id);
+      } else {
+        cart[id] = quantity.clamp(1, maximum).toInt();
+      }
+    });
+  }
+
+  Future<void> checkout() async {
+    DateTime due = DateTime.now().add(const Duration(days: 7));
+    final remark = TextEditingController();
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder:
-          (c) => SimpleDialog(
-            title: const Text('สภาพอุปกรณ์เมื่อคืน'),
-            children: [
-              for (final v in ['normal', 'damaged', 'abnormal', 'lost'])
-                SimpleDialogOption(
-                  onPressed: () => Navigator.pop(c, v),
-                  child: Text(label(v)),
-                ),
-            ],
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('ตะกร้าอุปกรณ์', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  for (final entry in cart.entries)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.memory, color: green),
+                      title: Text('${equipment.firstWhere((x) => x['id'] == entry.key)['name']}'),
+                      subtitle: Text('${equipment.firstWhere((x) => x['id'] == entry.key)['code']}'),
+                      trailing: Text('${entry.value} ชิ้น', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_month),
+                    title: const Text('กำหนดคืน'),
+                    subtitle: Text(fmt(due.toIso8601String())),
+                    trailing: const Icon(Icons.edit_calendar_outlined),
+                    onTap: () async {
+                      final picked = await showDatePicker(context: context, initialDate: due, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                      if (picked != null) setSheetState(() => due = picked);
+                    },
+                  ),
+                  TextField(controller: remark, maxLines: 2, decoration: const InputDecoration(labelText: 'หมายเหตุ (ถ้ามี)', prefixIcon: Icon(Icons.notes))),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.pop(sheetContext, true),
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('ยืนยันการยืม'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
+        ),
+      ),
     );
-    if (condition == null) return;
+    if (confirmed != true) return;
+    setState(() => loading = true);
+    try {
+      for (final entry in cart.entries) {
+        await widget.api.call('/loans', method: 'POST', body: {
+          'equipmentId': entry.key,
+          'quantity': entry.value,
+          'dueAt': due.toIso8601String(),
+          'remark': remark.text.trim(),
+        });
+      }
+      if (!mounted) return;
+      setState(() {
+        cart.clear();
+        index = 3;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('บันทึกการยืมอุปกรณ์เรียบร้อยแล้ว')));
+      await load();
+    } catch (e) {
+      error(e);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> completeRepair(dynamic x) async {
+    try {
+      final result = await widget.api.call(
+        '/loans/${x['id']}/repair',
+        method: 'POST',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${result['message']}')),
+        );
+      }
+      await load();
+    } catch (e) {
+      error(e);
+    }
+  }
+
+  Future<void> returnItem(dynamic x) async {
+    String condition = 'normal';
+    final remark = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('คืนอุปกรณ์'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${x['equipmentName']} · ${x['quantity']} ชิ้น', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                const Text('สภาพอุปกรณ์เมื่อคืน'),
+                for (final value in ['normal', 'damaged', 'abnormal', 'lost'])
+                  RadioListTile<String>(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    value: value,
+                    groupValue: condition,
+                    title: Text(label(value)),
+                    onChanged: (v) => setDialogState(() => condition = v!),
+                  ),
+                TextField(controller: remark, maxLines: 3, decoration: const InputDecoration(labelText: 'หมายเหตุ/รายละเอียดเพิ่มเติม')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('ยกเลิก')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('ยืนยันการคืน')),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
     try {
       await widget.api.call(
         '/loans/${x['id']}/return',
         method: 'POST',
         body: {
           'condition': condition,
-          'remark': condition == 'normal' ? '' : 'แจ้งจากแอป Flutter',
+          'remark': remark.text.trim(),
         },
       );
       load();

@@ -24,7 +24,7 @@
       </div>
       <div class="search"><input id="adminEquipmentSearch" placeholder="ค้นหาด้วย ID หรือชื่ออุปกรณ์..."></div>
       <div id="adminEquipmentList">${renderAdminEquipment(state.equipment)}</div>
-      <div class="admin-stock"><div><small>รวมอุปกรณ์</small><strong>${state.equipment.reduce((sum,item)=>sum+item.totalQuantity,0)}</strong></div><div><small>ต้องซ่อม</small><strong>${state.equipment.filter(item=>item.status==='maintenance').length}</strong></div></div>`;
+      <div class="admin-stock"><div><small>รวมอุปกรณ์</small><strong>${state.equipment.reduce((sum,item)=>sum+item.totalQuantity,0)}</strong></div><div><small>ต้องซ่อม</small><strong>${state.equipment.reduce((sum,item)=>sum+(item.maintenanceQuantity||0),0)}</strong></div></div>`;
     $('#adminEquipmentSearch').oninput=event=>{
       const search=event.target.value.toLowerCase();
       $('#adminEquipmentList').innerHTML=renderAdminEquipment(state.equipment.filter(item=>(item.name+item.code+item.category).toLowerCase().includes(search)));
@@ -35,7 +35,7 @@
     if(!items.length)return '<div class="card empty-state">ไม่พบอุปกรณ์</div>';
     return items.map(item=>`<article class="card admin-equipment-card">
       <div class="device-art">${icon(item)}</div>
-      <div><span class="badge ${item.status}">${txt[item.status]}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">คงเหลือ ${item.availableQuantity} / ${item.totalQuantity} ชิ้น</p></div>
+      <div><span class="badge ${item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available'}">${txt[item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available']}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">${esc(item.category)} · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
       <button class="icon-delete" aria-label="ลบ ${esc(item.name)}" onclick="removeAdminEquipment(${item.id})">⌫</button>
     </article>`).join('');
   };
@@ -84,7 +84,10 @@
   window.maintenance=async function(){
     const allLoans=await api('/loans');
     const issueConditions=['damaged','abnormal','lost'];
-    const items=allLoans.filter(item=>item.borrowRemark||item.returnRemark||issueConditions.includes(item.returnCondition));
+    const items=allLoans.filter(item=>{
+      const repairable=['damaged','abnormal'].includes(item.returnCondition);
+      return (!repairable||!item.repairedAt)&&(item.borrowRemark||item.returnRemark||issueConditions.includes(item.returnCondition));
+    });
     $('#content').innerHTML=`<h1 class="page-title">ซ่อมบำรุง</h1><p class="subtitle">แสดงเฉพาะอุปกรณ์ที่มีหมายเหตุหรือถูกระบุว่าชำรุด</p><div class="search"><input id="maintenanceSearch" placeholder="ค้นหาอุปกรณ์หรือผู้แจ้ง..."></div><div id="maintenanceList">${renderMaintenance(items)}</div>`;
     $('#maintenanceSearch').oninput=event=>{
       const search=event.target.value.toLowerCase();
@@ -97,8 +100,17 @@
     return items.map(item=>`<article class="card maintenance-card ${item.returnCondition||'remark'}">
       <div class="admin-loan-top"><div class="device-art">⚙</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">แจ้งโดย ${esc(item.borrowerName)}${item.studentId?` · ${esc(item.studentId)}`:''}</p></div>${item.returnCondition?`<span class="badge ${item.returnCondition}">${txt[item.returnCondition]}</span>`:'<span class="badge borrowed">มีหมายเหตุ</span>'}</div>
       <div class="issue-note"><small>หมายเหตุ</small><p>${esc(item.returnRemark||item.borrowRemark||'ไม่ได้ระบุรายละเอียด')}</p></div>
-      <footer><span>วันที่แจ้ง/คืน</span><b>${date(item.returnedAt||item.borrowedAt)}</b></footer>
+      <footer><span>วันที่แจ้ง/คืน <b>${date(item.returnedAt||item.borrowedAt)}</b></span>${['damaged','abnormal'].includes(item.returnCondition)?`<button class="button primary compact" onclick="completeRepair(${item.id})">✓ เสร็จสิ้น</button>`:''}</footer>
     </article>`).join('');
+  };
+
+  window.completeRepair=async function(id){
+    if(!confirm('ยืนยันว่าซ่อมอุปกรณ์รายการนี้เสร็จแล้วและพร้อมให้ยืม?'))return;
+    try{
+      const result=await api(`/loans/${id}/repair`,{method:'POST'});
+      toast(result.message);
+      await window.maintenance();
+    }catch(error){toast(error.message,true);}
   };
 
   window.addEventListener('hashchange',()=>{

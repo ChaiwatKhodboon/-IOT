@@ -1,6 +1,21 @@
 node_modules/
 .npm-cache/
+.npm-mobile-cache/
+.gradle-home/
+.gradle/
+.pub-cache/
 .env
 coverage/
 npm-debug.log*
 .DS_Store
+
+# Flutter/Dart generated files
+mobile_flutter/.dart_tool/
+mobile_flutter/build/
+mobile_flutter/android/.gradle/
+mobile_flutter/.idea/
+mobile_flutter/*.log
+mobile_flutter/*.iml
+
+# Local backup files
+*.bak

@@ -9,7 +9,7 @@ router.get('/', authenticate, async (req, res, next) => {
     const search = String(req.query.search || '').trim();
     const params = search ? [`%${search}%`] : [];
     const where = search ? 'WHERE code ILIKE $1 OR name ILIKE $1 OR category ILIKE $1' : '';
-    const { rows } = await pool.query(`SELECT id, code, name, category, description, total_quantity AS "totalQuantity", available_quantity AS "availableQuantity", status, created_at AS "createdAt", updated_at AS "updatedAt" FROM equipment ${where} ORDER BY name`, params);
+    const { rows } = await pool.query(`SELECT id, code, name, category, description, total_quantity AS "totalQuantity", available_quantity AS "availableQuantity", maintenance_quantity AS "maintenanceQuantity", status, created_at AS "createdAt", updated_at AS "updatedAt" FROM equipment ${where} ORDER BY name`, params);
     res.json(rows);
   } catch (error) { next(error); }
 });

@@ -22,6 +22,7 @@ CREATE TABLE equipment (
   description TEXT,
   total_quantity INTEGER NOT NULL CHECK (total_quantity >= 0),
   available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0 AND available_quantity <= total_quantity),
+  maintenance_quantity INTEGER NOT NULL DEFAULT 0 CHECK (maintenance_quantity >= 0 AND maintenance_quantity <= total_quantity),
   status equipment_status NOT NULL DEFAULT 'available',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -39,6 +40,7 @@ CREATE TABLE loans (
   borrow_remark TEXT,
   return_remark TEXT,
   return_condition condition_status,
+  repaired_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

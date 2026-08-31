@@ -7,8 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="description" content="ระบบยืมคืนอุปกรณ์ IoT">
   <title>ระบบยืมคืนอุปกรณ์ IoT</title>
-  <link rel="manifest" href="/manifest.webmanifest?v=6">
-  <link rel="icon" href="/icons/app-icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest?v=7">
+  <link rel="icon" type="image/jpeg" href="/icons/IT.jpg">
+  <link rel="apple-touch-icon" href="/icons/IT.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,7 +20,7 @@
   <section id="loginView" class="auth-screen">
     <div class="auth-top"><p>ยินดีต้อนรับเข้าสู่ระบบ</p><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong></div>
     <div class="auth-content">
-      <img class="auth-logo" src="/icons/app-icon.svg" alt="IoT Loan">
+      <img class="auth-logo" src="/icons/IT.jpg" alt="IoT Loan">
       <h1>เข้าสู่ระบบ</h1>
       <form id="loginForm" class="auth-card" autocomplete="off">
         <p class="overline">STAFF SIGN IN</p><h2>ลงชื่อเข้าใช้ระบบ</h2>
@@ -33,7 +34,7 @@
   <section id="signupView" class="auth-screen hidden">
     <div class="auth-top"><p>ยินดีต้อนรับเข้าสู่ระบบ</p><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong></div>
     <div class="auth-content">
-      <img class="auth-logo" src="/icons/app-icon.svg" alt="IoT Loan">
+      <img class="auth-logo" src="/icons/IT.jpg" alt="IoT Loan">
       <h1>สมัครสมาชิก</h1>
       <form id="signupForm" class="auth-card">
         <h2>ลงทะเบียนผู้ใช้ใหม่</h2><p class="form-hint">สำหรับผู้ใช้ที่ยังไม่มีบัญชีเข้าใช้งาน</p>
@@ -48,10 +49,10 @@
     </div>
   </section>
   <div id="appView" class="app hidden">
-    <header class="app-header"><img src="/icons/app-icon.svg" alt=""><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong><button id="installBtn" class="install hidden">ติดตั้ง</button></header>
+    <header class="app-header"><img src="/icons/IT.jpg" alt=""><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong><button id="installBtn" class="install hidden">ติดตั้ง</button></header>
     <main id="content"></main><nav id="bottomNav" class="bottom-nav"></nav>
   </div>
   <dialog id="modal"><div class="modal-sheet"><button class="close" onclick="modal.close()">×</button><div id="modalBody"></div></div></dialog>
-  <script src="/bootstrap.js?v=auth-v9"></script>
+  <script src="/bootstrap.js?v=auth-required-v1"></script>
 </body>
 </html>
