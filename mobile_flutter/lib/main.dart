@@ -34,6 +34,16 @@ class _IoTLoanAppState extends State<IoTLoanApp> {
       ),
       useMaterial3: true,
     ),
+    builder:
+        (context, child) => ColoredBox(
+          color: const Color(0xffe9eef2),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: ColoredBox(color: bg, child: child ?? const SizedBox()),
+            ),
+          ),
+        ),
     home:
         user == null
             ? AuthPage(api: api, onLogin: (u) => setState(() => user = u))
@@ -258,6 +268,11 @@ class _HomePageState extends State<HomePage> {
   List equipment = [], loans = [];
   final Map<int, int> cart = {};
   String equipmentQuery = '', loanQuery = '';
+  String loanFilter = 'all';
+  String maintenanceQuery = '';
+  bool reviewingCart = false;
+  DateTime checkoutDue = DateTime.now().add(const Duration(days: 7));
+  final checkoutRemark = TextEditingController();
   bool get admin => widget.user['role'] == 'admin';
   @override
   void initState() {
@@ -339,7 +354,7 @@ class _HomePageState extends State<HomePage> {
             ? [dashboard(), inventory(), tracking(), maintenance(), profile()]
             : [
               dashboard(),
-              inventory(borrow: true),
+              reviewingCart ? cartReviewPage() : inventory(borrow: true),
               returns(),
               tracking(),
               profile(),
@@ -349,7 +364,9 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         leading: Padding(
           padding: const EdgeInsets.all(9),
-          child: ClipOval(child: Image.asset('assets/IT.jpg', fit: BoxFit.cover)),
+          child: ClipOval(
+            child: Image.asset('assets/IT.jpg', fit: BoxFit.cover),
+          ),
         ),
         title: const Text(
           'ระบบยืม-คืน อุปกรณ์ IoT',
@@ -366,18 +383,17 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
-        onDestinationSelected: (v) => setState(() => index = v),
+        onDestinationSelected:
+            (v) => setState(() {
+              index = v;
+              if (v != 1) reviewingCart = false;
+            }),
         destinations: destinations,
       ),
-      floatingActionButton: !admin && index == 1 && cart.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: checkout,
-              backgroundColor: dark,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.shopping_basket_outlined),
-              label: Text('ตะกร้า ${cart.values.fold<int>(0, (a, b) => a + b)} ชิ้น'),
-            )
-          : null,
+      bottomSheet:
+          !admin && index == 1 && cart.isNotEmpty && !reviewingCart
+              ? cartBar()
+              : null,
     );
   }
 
@@ -439,11 +455,16 @@ class _HomePageState extends State<HomePage> {
     borrow ? 'เลือกอุปกรณ์ที่พร้อมใช้งาน' : 'จัดการและตรวจสอบอุปกรณ์',
     [
       TextField(
-        onChanged: (value) => setState(() => equipmentQuery = value.trim().toLowerCase()),
+        onChanged:
+            (value) =>
+                setState(() => equipmentQuery = value.trim().toLowerCase()),
         decoration: InputDecoration(
           hintText: 'ค้นหาด้วยชื่อ รหัส หรือหมวดหมู่...',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: equipmentQuery.isEmpty ? null : const Icon(Icons.filter_alt_outlined),
+          suffixIcon:
+              equipmentQuery.isEmpty
+                  ? null
+                  : const Icon(Icons.filter_alt_outlined),
         ),
       ),
       const SizedBox(height: 10),
@@ -456,11 +477,69 @@ class _HomePageState extends State<HomePage> {
             label: const Text('เพิ่ม'),
           ),
         ),
-      ...equipment.where((x) {
-        if (equipmentQuery.isEmpty) return true;
-        return '${x['name']} ${x['code']} ${x['category']}'.toLowerCase().contains(equipmentQuery);
-      }).map((x) => equipmentCard(x, borrow)),
+      if (borrow)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'อุปกรณ์ที่พร้อมให้ยืม',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              status('available'),
+            ],
+          ),
+        ),
+      ...equipment
+          .where((x) {
+            if (equipmentQuery.isEmpty) return true;
+            return '${x['name']} ${x['code']} ${x['category']}'
+                .toLowerCase()
+                .contains(equipmentQuery);
+          })
+          .map((x) => equipmentCard(x, borrow)),
+      if (admin && !borrow) stockSummary(),
       if (borrow && cart.isNotEmpty) const SizedBox(height: 76),
+    ],
+  );
+  Widget stockSummary() {
+    final total = equipment.fold<int>(
+      0,
+      (sum, x) => sum + ((x['totalQuantity'] ?? 0) as num).toInt(),
+    );
+    final repair = equipment.fold<int>(
+      0,
+      (sum, x) => sum + ((x['maintenanceQuantity'] ?? 0) as num).toInt(),
+    );
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: dark,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: summaryValue('รวมอุปกรณ์', total)),
+          Container(width: 1, height: 38, color: Colors.white24),
+          Expanded(child: summaryValue('ต้องซ่อม', repair)),
+        ],
+      ),
+    );
+  }
+
+  Widget summaryValue(String text, int value) => Column(
+    children: [
+      Text(text, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+      Text(
+        '$value',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     ],
   );
   Widget equipmentCard(dynamic x, bool borrow) => Card(
@@ -520,51 +599,312 @@ class _HomePageState extends State<HomePage> {
           ),
           if (borrow &&
               x['status'] != 'retired' &&
-              x['availableQuantity'] > 0)
-            Row(
-              children: [
-                IconButton.filledTonal(
-                  onPressed: (cart[x['id']] ?? 0) > 0 ? () => setCart(x, (cart[x['id']] ?? 0) - 1) : null,
-                  icon: const Icon(Icons.remove),
+              number(x['availableQuantity']) > 0)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed:
+                    (cart[number(x['id'])] ?? 0) <
+                            number(x['availableQuantity'])
+                        ? () {
+                          setCart(x, (cart[number(x['id'])] ?? 0) + 1);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('เพิ่มในรายการยืมแล้ว'),
+                              duration: Duration(milliseconds: 800),
+                            ),
+                          );
+                        }
+                        : null,
+                icon: const Icon(Icons.add),
+                label: Text(
+                  (cart[number(x['id'])] ?? 0) > 0
+                      ? 'เพิ่มอีก · เลือกแล้ว ${cart[number(x['id'])]} ชิ้น'
+                      : 'เพิ่มในรายการยืม',
                 ),
-                Expanded(
-                  child: Text('${cart[x['id']] ?? 0} ชิ้น', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                IconButton.filled(
-                  onPressed: (cart[x['id']] ?? 0) < x['availableQuantity'] ? () => setCart(x, (cart[x['id']] ?? 0) + 1) : null,
-                  icon: const Icon(Icons.add),
-                ),
-              ],
+              ),
             ),
         ],
       ),
     ),
   );
+
+  int number(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse(value?.toString() ?? '') ?? 0;
+
+  Widget cartBar() => Material(
+    elevation: 12,
+    color: dark,
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Row(
+          children: [
+            const Icon(Icons.shopping_basket_outlined, color: Colors.white),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                'เลือกแล้ว\n${cart.length} รายการ · ${cart.values.fold<int>(0, (a, b) => a + b)} ชิ้น',
+                style: const TextStyle(color: Colors.white, fontSize: 11),
+              ),
+            ),
+            FilledButton(
+              onPressed: () => setState(() => reviewingCart = true),
+              child: const Text('ยืนยันการยืม  →'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget cartReviewPage() => page(
+    'ตะกร้าอุปกรณ์',
+    'ตรวจสอบจำนวนและกรอกข้อมูลการยืม',
+    [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => setState(() => reviewingCart = false),
+          icon: const Icon(Icons.arrow_back),
+          label: const Text('กลับไปเลือกอุปกรณ์'),
+        ),
+      ),
+      ...cart.entries.toList().map((entry) {
+        final item = equipment.firstWhere((x) => number(x['id']) == entry.key);
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 42,
+                  height: 52,
+                  child: Icon(Icons.memory, color: green, size: 30),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${item['name']}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '${item['code']}',
+                        style: const TextStyle(fontSize: 10, color: muted),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton.filledTonal(
+                  onPressed: () => setCart(item, entry.value - 1),
+                  icon: const Icon(Icons.remove),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
+                  child: Text(
+                    '${entry.value}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton.filledTonal(
+                  onPressed:
+                      entry.value < number(item['availableQuantity'])
+                          ? () => setCart(item, entry.value + 1)
+                          : null,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+      const Section('ข้อมูลการยืม'),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.person_outline, color: green),
+          title: const Text(
+            'ชื่อผู้ยืม',
+            style: TextStyle(fontSize: 10, color: muted),
+          ),
+          subtitle: Text(
+            '${widget.user['fullName']}',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.calendar_month, color: green),
+          title: const Text(
+            'กำหนดคืน (Return Date)',
+            style: TextStyle(fontSize: 11),
+          ),
+          subtitle: Text(
+            fmt(checkoutDue.toIso8601String()),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: pickCheckoutDate,
+        ),
+      ),
+      TextField(
+        controller: checkoutRemark,
+        minLines: 3,
+        maxLines: 4,
+        decoration: const InputDecoration(
+          labelText: 'หมายเหตุ',
+          hintText: 'ระบุรายละเอียดเพิ่มเติม (ถ้ามี)',
+        ),
+      ),
+      const SizedBox(height: 10),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xffeef1ff),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('จำนวนอุปกรณ์รวม'),
+            Text(
+              '${cart.values.fold<int>(0, (a, b) => a + b)} ชิ้น',
+              style: const TextStyle(color: green, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 10),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: loading || cart.isEmpty ? null : submitCart,
+          icon: const Icon(Icons.check_circle),
+          label: Text(loading ? 'กำลังบันทึก...' : 'ยืนยันการยืม'),
+        ),
+      ),
+    ],
+  );
   Widget returns() {
     final active = loans.where((x) => x['status'] == 'borrowed').toList();
     return page('คืนอุปกรณ์', 'เลือกอุปกรณ์ที่ต้องการคืน', [
       TextField(
-        onChanged: (value) => setState(() => loanQuery = value.trim().toLowerCase()),
-        decoration: const InputDecoration(hintText: 'ค้นหาอุปกรณ์ที่กำลังยืม...', prefixIcon: Icon(Icons.search)),
+        onChanged:
+            (value) => setState(() => loanQuery = value.trim().toLowerCase()),
+        decoration: const InputDecoration(
+          hintText: 'ค้นหาอุปกรณ์ที่กำลังยืม...',
+          prefixIcon: Icon(Icons.search),
+        ),
       ),
       const SizedBox(height: 10),
       if (active.isEmpty) const Empty(text: 'ไม่มีอุปกรณ์ที่กำลังยืม'),
-      ...active.where((x) => loanQuery.isEmpty || '${x['equipmentName']} ${x['equipmentCode']}'.toLowerCase().contains(loanQuery)).map((x) => loanCard(x, canReturn: true)),
+      ...active
+          .where(
+            (x) =>
+                loanQuery.isEmpty ||
+                '${x['equipmentName']} ${x['equipmentCode']}'
+                    .toLowerCase()
+                    .contains(loanQuery),
+          )
+          .map((x) => loanCard(x, canReturn: true)),
     ]);
   }
+
   Widget tracking() => page(
     admin ? 'ติดตามการยืม' : 'ประวัติการใช้อุปกรณ์',
     admin ? 'ตรวจสอบว่าใครกำลังยืมอุปกรณ์' : 'รายการยืม-คืนของคุณ',
-    loans
-        .map(
-          (x) => loanCard(
-            x,
-            showBorrower: admin,
-            canReturn: !admin && x['status'] == 'borrowed',
-          ),
-        )
-        .toList(),
+    [
+      if (!admin) historyStats(),
+      TextField(
+        onChanged:
+            (value) => setState(() => loanQuery = value.trim().toLowerCase()),
+        decoration: InputDecoration(
+          hintText:
+              admin
+                  ? 'ค้นหาผู้ยืม รหัสนิสิต หรืออุปกรณ์...'
+                  : 'ค้นหาด้วยรหัสหรือชื่ออุปกรณ์...',
+          prefixIcon: const Icon(Icons.search),
+        ),
+      ),
+      const SizedBox(height: 9),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            filterChip('all', 'ทั้งหมด'),
+            filterChip('borrowed', 'กำลังยืม'),
+            filterChip('returned', 'คืนแล้ว'),
+            if (!admin) filterChip('issue', 'แจ้งซ่อม'),
+          ],
+        ),
+      ),
+      const SizedBox(height: 4),
+      ...filteredLoans().map((x) => loanCard(x, showBorrower: admin)),
+      if (filteredLoans().isEmpty) const Empty(text: 'ไม่พบรายการยืม'),
+    ],
   );
+
+  Widget historyStats() {
+    final active = loans.where((x) => x['status'] == 'borrowed').length;
+    final returned = loans.where((x) => x['status'] == 'returned').length;
+    final issues =
+        loans
+            .where(
+              (x) => [
+                'damaged',
+                'lost',
+                'abnormal',
+              ].contains(x['returnCondition']),
+            )
+            .length;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(child: stat('กำลังยืม', active, green)),
+          Expanded(child: stat('คืนแล้ว', returned)),
+          Expanded(child: stat('แจ้งซ่อม', issues, red)),
+        ],
+      ),
+    );
+  }
+
+  Widget filterChip(String value, String text) => Padding(
+    padding: const EdgeInsets.only(right: 6),
+    child: ChoiceChip(
+      label: Text(text),
+      selected: loanFilter == value,
+      onSelected: (_) => setState(() => loanFilter = value),
+      selectedColor: green,
+      labelStyle: TextStyle(
+        color: loanFilter == value ? Colors.white : muted,
+        fontSize: 11,
+      ),
+      showCheckmark: false,
+    ),
+  );
+
+  List filteredLoans() =>
+      loans.where((x) {
+        final issue = [
+          'damaged',
+          'lost',
+          'abnormal',
+        ].contains(x['returnCondition']);
+        if (loanFilter == 'issue' && !issue) return false;
+        if (loanFilter != 'all' &&
+            loanFilter != 'issue' &&
+            x['status'] != loanFilter) {
+          return false;
+        }
+        if (loanQuery.isEmpty) return true;
+        return '${x['equipmentName']} ${x['equipmentCode']} ${x['borrowerName'] ?? ''} ${x['studentId'] ?? ''}'
+            .toLowerCase()
+            .contains(loanQuery);
+      }).toList();
   Widget loanCard(
     dynamic x, {
     bool showBorrower = false,
@@ -667,53 +1007,75 @@ class _HomePageState extends State<HomePage> {
               (hasBorrowRemark || hasReturnRemark || hasDamage);
         }).toList();
     final cards =
-        issues.map<Widget>((x) {
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        issues
+            .where(
+              (x) =>
+                  maintenanceQuery.isEmpty ||
+                  '${x['equipmentName']} ${x['equipmentCode']} ${x['borrowerName']} ${x['borrowRemark'] ?? ''} ${x['returnRemark'] ?? ''}'
+                      .toLowerCase()
+                      .contains(maintenanceQuery),
+            )
+            .map<Widget>((x) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${x['equipmentName']}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${x['equipmentName']}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          status('${x['returnCondition'] ?? 'มีหมายเหตุ'}'),
+                        ],
                       ),
-                      status('${x['returnCondition'] ?? 'มีหมายเหตุ'}'),
+                      Text(
+                        'แจ้งโดย ${x['borrowerName']}',
+                        style: const TextStyle(fontSize: 10, color: muted),
+                      ),
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(9),
+                        color: const Color(0xfffff8eb),
+                        child: Text(
+                          '${x['returnRemark'] ?? x['borrowRemark']}',
+                        ),
+                      ),
+                      if ([
+                        'damaged',
+                        'abnormal',
+                      ].contains(x['returnCondition']))
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => completeRepair(x),
+                            icon: const Icon(Icons.check),
+                            label: const Text('เสร็จสิ้น'),
+                          ),
+                        ),
                     ],
                   ),
-                  Text(
-                    'แจ้งโดย ${x['borrowerName']}',
-                    style: const TextStyle(fontSize: 10, color: muted),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.all(9),
-                    color: const Color(0xfffff8eb),
-                    child: Text('${x['returnRemark'] ?? x['borrowRemark']}'),
-                  ),
-                  if (['damaged', 'abnormal'].contains(x['returnCondition']))
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => completeRepair(x),
-                        icon: const Icon(Icons.check),
-                        label: const Text('เสร็จสิ้น'),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          );
-        }).toList();
-    return page(
-      'ซ่อมบำรุง',
-      'เฉพาะอุปกรณ์ที่มีหมายเหตุหรือระบุว่าชำรุด',
-      issues.isEmpty ? [const Empty(text: 'ไม่มีอุปกรณ์รอซ่อม')] : cards,
-    );
+                ),
+              );
+            })
+            .toList();
+    return page('ซ่อมบำรุง', 'เฉพาะอุปกรณ์ที่มีหมายเหตุหรือระบุว่าชำรุด', [
+      TextField(
+        onChanged:
+            (value) =>
+                setState(() => maintenanceQuery = value.trim().toLowerCase()),
+        decoration: const InputDecoration(
+          hintText: 'ค้นหาอุปกรณ์หรือผู้แจ้ง...',
+          prefixIcon: Icon(Icons.search),
+        ),
+      ),
+      const SizedBox(height: 8),
+      if (cards.isEmpty) const Empty(text: 'ไม่มีอุปกรณ์รอซ่อม') else ...cards,
+    ]);
   }
 
   Widget profile() => page('บัญชี${admin ? ' Admin' : ''}', 'ข้อมูลผู้ใช้งาน', [
@@ -810,15 +1172,62 @@ class _HomePageState extends State<HomePage> {
   }
 
   void setCart(dynamic item, int quantity) {
-    final id = item['id'] as int;
-    final maximum = item['availableQuantity'] as int;
+    final id = number(item['id']);
+    final maximum = number(item['availableQuantity']);
     setState(() {
       if (quantity <= 0) {
         cart.remove(id);
+        if (cart.isEmpty) reviewingCart = false;
       } else {
         cart[id] = quantity.clamp(1, maximum).toInt();
       }
     });
+  }
+
+  Future<void> pickCheckoutDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: checkoutDue,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null && mounted) {
+      setState(() => checkoutDue = picked);
+    }
+  }
+
+  Future<void> submitCart() async {
+    if (cart.isEmpty) return;
+    setState(() => loading = true);
+    try {
+      for (final entry in cart.entries.toList()) {
+        await widget.api.call(
+          '/loans',
+          method: 'POST',
+          body: {
+            'equipmentId': entry.key,
+            'quantity': entry.value,
+            'dueAt': checkoutDue.toIso8601String(),
+            'remark': checkoutRemark.text.trim(),
+          },
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        cart.clear();
+        checkoutRemark.clear();
+        reviewingCart = false;
+        index = 3;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('บันทึกการยืมอุปกรณ์เรียบร้อยแล้ว')),
+      );
+      await load();
+    } catch (e) {
+      error(e);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   Future<void> checkout() async {
@@ -827,71 +1236,116 @@ class _HomePageState extends State<HomePage> {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) => SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('ตะกร้าอุปกรณ์', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  for (final entry in cart.entries)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.memory, color: green),
-                      title: Text('${equipment.firstWhere((x) => x['id'] == entry.key)['name']}'),
-                      subtitle: Text('${equipment.firstWhere((x) => x['id'] == entry.key)['code']}'),
-                      trailing: Text('${entry.value} ชิ้น', style: const TextStyle(fontWeight: FontWeight.bold)),
+      builder:
+          (sheetContext) => StatefulBuilder(
+            builder:
+                (context, setSheetState) => SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      18,
+                      20,
+                      20 + MediaQuery.viewInsetsOf(context).bottom,
                     ),
-                  const Divider(),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.calendar_month),
-                    title: const Text('กำหนดคืน'),
-                    subtitle: Text(fmt(due.toIso8601String())),
-                    trailing: const Icon(Icons.edit_calendar_outlined),
-                    onTap: () async {
-                      final picked = await showDatePicker(context: context, initialDate: due, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
-                      if (picked != null) setSheetState(() => due = picked);
-                    },
-                  ),
-                  TextField(controller: remark, maxLines: 2, decoration: const InputDecoration(labelText: 'หมายเหตุ (ถ้ามี)', prefixIcon: Icon(Icons.notes))),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => Navigator.pop(sheetContext, true),
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('ยืนยันการยืม'),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ตะกร้าอุปกรณ์',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          for (final entry in cart.entries)
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.memory, color: green),
+                              title: Text(
+                                '${equipment.firstWhere((x) => x['id'] == entry.key)['name']}',
+                              ),
+                              subtitle: Text(
+                                '${equipment.firstWhere((x) => x['id'] == entry.key)['code']}',
+                              ),
+                              trailing: Text(
+                                '${entry.value} ชิ้น',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          const Divider(),
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.calendar_month),
+                            title: const Text('กำหนดคืน'),
+                            subtitle: Text(fmt(due.toIso8601String())),
+                            trailing: const Icon(Icons.edit_calendar_outlined),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: due,
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365),
+                                ),
+                              );
+                              if (picked != null) {
+                                setSheetState(() => due = picked);
+                              }
+                            },
+                          ),
+                          TextField(
+                            controller: remark,
+                            maxLines: 2,
+                            decoration: const InputDecoration(
+                              labelText: 'หมายเหตุ (ถ้ามี)',
+                              prefixIcon: Icon(Icons.notes),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed:
+                                  () => Navigator.pop(sheetContext, true),
+                              icon: const Icon(Icons.check_circle_outline),
+                              label: const Text('ยืนยันการยืม'),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
           ),
-        ),
-      ),
     );
     if (confirmed != true) return;
     setState(() => loading = true);
     try {
       for (final entry in cart.entries) {
-        await widget.api.call('/loans', method: 'POST', body: {
-          'equipmentId': entry.key,
-          'quantity': entry.value,
-          'dueAt': due.toIso8601String(),
-          'remark': remark.text.trim(),
-        });
+        await widget.api.call(
+          '/loans',
+          method: 'POST',
+          body: {
+            'equipmentId': entry.key,
+            'quantity': entry.value,
+            'dueAt': due.toIso8601String(),
+            'remark': remark.text.trim(),
+          },
+        );
       }
       if (!mounted) return;
       setState(() {
         cart.clear();
         index = 3;
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('บันทึกการยืมอุปกรณ์เรียบร้อยแล้ว')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('บันทึกการยืมอุปกรณ์เรียบร้อยแล้ว')),
+      );
       await load();
     } catch (e) {
       error(e);
@@ -907,9 +1361,9 @@ class _HomePageState extends State<HomePage> {
         method: 'POST',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${result['message']}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${result['message']}')));
       }
       await load();
     } catch (e) {
@@ -922,45 +1376,65 @@ class _HomePageState extends State<HomePage> {
     final remark = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('คืนอุปกรณ์'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${x['equipmentName']} · ${x['quantity']} ชิ้น', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                const Text('สภาพอุปกรณ์เมื่อคืน'),
-                for (final value in ['normal', 'damaged', 'abnormal', 'lost'])
-                  RadioListTile<String>(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    value: value,
-                    groupValue: condition,
-                    title: Text(label(value)),
-                    onChanged: (v) => setDialogState(() => condition = v!),
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (context, setDialogState) => AlertDialog(
+                  title: const Text('คืนอุปกรณ์'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${x['equipmentName']} · ${x['quantity']} ชิ้น',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text('สภาพอุปกรณ์เมื่อคืน'),
+                        for (final value in [
+                          'normal',
+                          'damaged',
+                          'abnormal',
+                          'lost',
+                        ])
+                          RadioListTile<String>(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            value: value,
+                            groupValue: condition,
+                            title: Text(label(value)),
+                            onChanged:
+                                (v) => setDialogState(() => condition = v!),
+                          ),
+                        TextField(
+                          controller: remark,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'หมายเหตุ/รายละเอียดเพิ่มเติม',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                TextField(controller: remark, maxLines: 3, decoration: const InputDecoration(labelText: 'หมายเหตุ/รายละเอียดเพิ่มเติม')),
-              ],
-            ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('ยกเลิก'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('ยืนยันการคืน'),
+                    ),
+                  ],
+                ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('ยกเลิก')),
-            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('ยืนยันการคืน')),
-          ],
-        ),
-      ),
     );
     if (confirmed != true) return;
     try {
       await widget.api.call(
         '/loans/${x['id']}/return',
         method: 'POST',
-        body: {
-          'condition': condition,
-          'remark': remark.text.trim(),
-        },
+        body: {'condition': condition, 'remark': remark.text.trim()},
       );
       load();
     } catch (e) {
@@ -972,7 +1446,8 @@ class _HomePageState extends State<HomePage> {
     final n = TextEditingController(),
         c = TextEditingController(),
         cat = TextEditingController(),
-        q = TextEditingController(text: '1');
+        q = TextEditingController(text: '1'),
+        description = TextEditingController();
     await showDialog(
       context: context,
       builder:
@@ -1001,6 +1476,12 @@ class _HomePageState extends State<HomePage> {
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'จำนวน'),
                   ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: description,
+                    maxLines: 3,
+                    decoration: const InputDecoration(labelText: 'รายละเอียด'),
+                  ),
                 ],
               ),
             ),
@@ -1020,6 +1501,7 @@ class _HomePageState extends State<HomePage> {
                         'code': c.text,
                         'category': cat.text,
                         'totalQuantity': int.tryParse(q.text) ?? 1,
+                        'description': description.text.trim(),
                         'status': 'available',
                       },
                     );

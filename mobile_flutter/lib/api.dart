@@ -1,10 +1,21 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-const apiBase = String.fromEnvironment(
-  'API_URL',
-  defaultValue: 'http://192.168.1.187:3000/api',
-);
+const configuredApiBase = String.fromEnvironment('API_URL');
+
+String get apiBase {
+  if (configuredApiBase.isNotEmpty) {
+    return configuredApiBase.endsWith('/')
+        ? configuredApiBase.substring(0, configuredApiBase.length - 1)
+        : configuredApiBase;
+  }
+  if (kIsWeb) return '${Uri.base.origin}/api';
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    return 'http://10.0.2.2:3000/api';
+  }
+  return 'http://localhost:3000/api';
+}
 
 class Api {
   String? token;

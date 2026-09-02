@@ -1,4 +1,4 @@
-const CACHE='iot-loan-v15-repair-complete';
+const CACHE='iot-loan-v16-responsive-layout';
 const ASSETS=['/','/index.html','/styles.css','/bootstrap.js','/app.js','/auth-pages.js','/admin-ui.js','/manifest.webmanifest','/icons/IT.jpg'];
 
 self.addEventListener('install',event=>{
