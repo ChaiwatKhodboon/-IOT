@@ -9,6 +9,7 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(120) NOT NULL,
   student_id VARCHAR(20),
+  avatar_data TEXT,
   role user_role NOT NULL DEFAULT 'user',
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -6,7 +6,7 @@
   if(location.hash)history.replaceState(null,'',location.pathname);
 
   const appScript=document.createElement('script');
-  appScript.src='/app.js?v=equipment-image-v4';
+  appScript.src='/app.js?v=profile-avatar-v1';
   appScript.onload=()=>{
     const authScript=document.createElement('script');
     authScript.src='/auth-pages.js?v=auth-v9';
