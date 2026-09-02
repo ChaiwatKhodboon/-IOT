@@ -6,13 +6,18 @@
   if(location.hash)history.replaceState(null,'',location.pathname);
 
   const appScript=document.createElement('script');
-  appScript.src='/app.js?v=profile-avatar-v1';
+  appScript.src='/app.js?v=management-v3';
   appScript.onload=()=>{
     const authScript=document.createElement('script');
     authScript.src='/auth-pages.js?v=auth-v9';
     authScript.onload=()=>{
       const adminScript=document.createElement('script');
-      adminScript.src='/admin-ui.js?v=equipment-image-v6';
+      adminScript.src='/admin-ui.js?v=management-v1';
+      adminScript.onload=()=>{
+        const managementScript=document.createElement('script');
+        managementScript.src='/management-ui.js?v=management-v3';
+        document.body.appendChild(managementScript);
+      };
       document.body.appendChild(adminScript);
     };
     document.body.appendChild(authScript);

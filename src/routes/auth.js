@@ -14,7 +14,8 @@ router.post('/login', async (req, res, next) => {
     const user = rows[0];
     if (!user || !(await bcrypt.compare(String(req.body.password || ''), user.password_hash))) return res.status(401).json({ message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     const profile = { id: user.id, username: user.username, fullName: user.full_name, studentId: user.student_id, avatarUrl: user.avatar_data, role: user.role };
-    res.json({ token: jwt.sign(profile, jwtSecret, { expiresIn: '8h' }), user: profile });
+    const claims = { id: user.id, username: user.username, fullName: user.full_name, studentId: user.student_id, role: user.role };
+    res.json({ token: jwt.sign(claims, jwtSecret, { expiresIn: '8h' }), user: profile });
   } catch (error) { next(error); }
 });
 

@@ -1,5 +1,5 @@
-const CACHE='iot-loan-v23-profile-avatar';
-const ASSETS=['/','/index.html','/styles.css','/bootstrap.js','/app.js','/auth-pages.js','/admin-ui.js','/manifest.webmanifest','/icons/IT.jpg'];
+const CACHE='iot-loan-v26-account-route';
+const ASSETS=['/','/index.html','/styles.css','/bootstrap.js','/app.js','/auth-pages.js','/admin-ui.js','/management-ui.js','/manifest.webmanifest','/icons/IT.jpg'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));

@@ -60,3 +60,56 @@
 @media (min-width:1300px){
   #eqList,#adminEquipmentList,#adminLoanList,#maintenanceList{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+/* Management and visual refinement */
+:root{--shadow:0 4px 16px rgba(24,54,42,.08)}
+main{line-height:1.55}.page-title{letter-spacing:-.025em}.subtitle{line-height:1.65}.card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(24,54,42,.12)}
+.device-art{width:68px;height:72px;border-radius:10px;overflow:hidden}.equipment-card{grid-template-columns:68px 1fr}.admin-equipment-card{grid-template-columns:68px minmax(0,1fr) 82px;min-height:130px}.admin-equipment-card .device-art{width:68px;height:76px}.admin-equipment-card h3,.equipment-card h3{font-size:16px;margin-top:4px}.admin-card-tools{width:82px}.icon-delete,.icon-image,.icon-edit{width:82px;min-height:34px;border:0;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:10px;font-weight:700;cursor:pointer}.icon-edit{background:#edf1ff;color:#3c579c}.icon-edit:hover{background:#dfe6ff}
+.overdue-alert{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px;padding:15px 17px;border-radius:10px;background:#fff1ef;border:1px solid #f5c2bd;color:#a72c27;text-decoration:none;box-shadow:0 5px 16px rgba(170,45,39,.08)}.overdue-alert span{font-size:11px}.overdue-card{border-left-color:var(--red)!important;background:linear-gradient(135deg,#fff 75%,#fff1ef)}.badge.overdue{background:#ffe4e1;color:#b42924}.red-text{color:var(--red)}
+.count-pill{background:var(--soft);color:var(--green);font-weight:700;border-radius:999px;padding:8px 13px;font-size:12px;white-space:nowrap}.account-grid{display:grid;gap:12px}.account-card{display:grid;grid-template-columns:52px minmax(0,1fr);gap:12px;align-items:center}.account-card.inactive{opacity:.68;filter:saturate(.6)}.account-avatar{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--soft);color:var(--green);font-size:21px;font-weight:700}.account-avatar img{width:100%;height:100%;object-fit:cover}.account-card h3{margin:4px 0 0}.account-stats{font-size:10px;margin:7px 0 0}.account-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding-top:10px;border-top:1px solid var(--line)}.account-actions .button{width:100%;padding-left:5px;padding-right:5px}.back-link{border:0;background:transparent;color:var(--green);font:inherit;font-size:12px;font-weight:700;padding:0 0 8px;cursor:pointer}.toggle-row{display:flex;align-items:center;gap:10px;margin:14px 0;padding:12px;background:#f4f7f5;border-radius:8px}.toggle-row input{width:19px;height:19px}select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:9px 11px;font:inherit}
+.bottom-nav{grid-template-columns:repeat(6,1fr)}
+@media(max-width:599px){main{padding:18px 16px 104px}.page-title{font-size:25px}.card{padding:14px}.admin-equipment-card{grid-template-columns:62px minmax(0,1fr);align-items:start}.admin-equipment-card .device-art{width:62px;height:70px}.admin-card-tools{grid-column:1/-1;width:100%;grid-template-columns:repeat(3,1fr)}.icon-delete,.icon-image,.icon-edit{width:100%;min-height:38px}.bottom-nav a{font-size:7.5px}.account-card{grid-template-columns:46px minmax(0,1fr)}.account-avatar{width:46px;height:46px}.account-card>.button{grid-column:1/-1;width:100%}.overdue-alert{align-items:flex-start;flex-direction:column}}
+@media(min-width:600px){.account-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1200px){.account-grid{grid-template-columns:repeat(3,minmax(0,1fr))}main{max-width:1240px}.device-art{width:76px;height:82px}.equipment-card{grid-template-columns:76px 1fr}}
+.cart-list .card {
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  column-gap: 16px;
+  min-height: 112px;
+}
+
+.cart-list .card .device-art {
+  width: 76px;
+  height: 82px;
+}
+
+.cart-list .card > div:nth-child(2) {
+  min-width: 0;
+}
+
+.cart-list .card h3 {
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.cart-list .counter {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+@media (max-width: 599px) {
+  .cart-list .card {
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .cart-list .card .device-art {
+    width: 62px;
+    height: 70px;
+  }
+
+  .cart-list .counter {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
