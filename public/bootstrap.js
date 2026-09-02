@@ -6,13 +6,13 @@
   if(location.hash)history.replaceState(null,'',location.pathname);
 
   const appScript=document.createElement('script');
-  appScript.src='/app.js?v=auth-required-v1';
+  appScript.src='/app.js?v=equipment-image-v4';
   appScript.onload=()=>{
     const authScript=document.createElement('script');
     authScript.src='/auth-pages.js?v=auth-v9';
     authScript.onload=()=>{
       const adminScript=document.createElement('script');
-      adminScript.src='/admin-ui.js?v=repair-complete-v1';
+      adminScript.src='/admin-ui.js?v=equipment-image-v6';
       document.body.appendChild(adminScript);
     };
     document.body.appendChild(authScript);

@@ -6,7 +6,7 @@ const loans = require('./routes/loans');
 const dashboard = require('./routes/dashboard');
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '3mb' }));
 app.use('/api/auth', auth);
 app.use('/api/equipment', equipment);
 app.use('/api/loans', loans);

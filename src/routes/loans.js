@@ -11,7 +11,7 @@ router.get('/', authenticate, async (req, res, next) => {
     if (req.query.status) { values.push(req.query.status); conditions.push(`l.status=$${values.length}`); }
     if (req.query.search) { values.push(`%${req.query.search}%`); conditions.push(`(e.name ILIKE $${values.length} OR e.code ILIKE $${values.length} OR u.full_name ILIKE $${values.length})`); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const { rows } = await pool.query(`SELECT l.id,l.quantity,l.borrowed_at AS "borrowedAt",l.due_at AS "dueAt",l.returned_at AS "returnedAt",l.repaired_at AS "repairedAt",l.status,l.borrow_remark AS "borrowRemark",l.return_remark AS "returnRemark",l.return_condition AS "returnCondition",e.id AS "equipmentId",e.code AS "equipmentCode",e.name AS "equipmentName",u.id AS "userId",u.full_name AS "borrowerName",u.student_id AS "studentId" FROM loans l JOIN equipment e ON e.id=l.equipment_id JOIN users u ON u.id=l.user_id ${where} ORDER BY l.borrowed_at DESC`, values);
+    const { rows } = await pool.query(`SELECT l.id,l.quantity,l.borrowed_at AS "borrowedAt",l.due_at AS "dueAt",l.returned_at AS "returnedAt",l.repaired_at AS "repairedAt",l.status,l.borrow_remark AS "borrowRemark",l.return_remark AS "returnRemark",l.return_condition AS "returnCondition",e.id AS "equipmentId",e.code AS "equipmentCode",e.name AS "equipmentName",e.image_data AS "imageUrl",u.id AS "userId",u.full_name AS "borrowerName",u.student_id AS "studentId" FROM loans l JOIN equipment e ON e.id=l.equipment_id JOIN users u ON u.id=l.user_id ${where} ORDER BY l.borrowed_at DESC`, values);
     res.json(rows);
   } catch (error) { next(error); }
 });

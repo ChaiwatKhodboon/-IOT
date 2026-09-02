@@ -20,6 +20,7 @@ CREATE TABLE equipment (
   name VARCHAR(120) NOT NULL,
   category VARCHAR(80) NOT NULL,
   description TEXT,
+  image_data TEXT,
   total_quantity INTEGER NOT NULL CHECK (total_quantity >= 0),
   available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0 AND available_quantity <= total_quantity),
   maintenance_quantity INTEGER NOT NULL DEFAULT 0 CHECK (maintenance_quantity >= 0 AND maintenance_quantity <= total_quantity),

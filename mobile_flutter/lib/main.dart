@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'api.dart';
 
 void main() => runApp(const IoTLoanApp());
@@ -542,6 +544,78 @@ class _HomePageState extends State<HomePage> {
       ),
     ],
   );
+  Widget equipmentImage(dynamic item) {
+    final value = item['imageUrl']?.toString() ?? '';
+    if (value.startsWith('data:image/') && value.contains(',')) {
+      try {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.memory(
+            base64Decode(value.substring(value.indexOf(',') + 1)),
+            width: 52,
+            height: 58,
+            fit: BoxFit.cover,
+            errorBuilder:
+                (_, __, ___) => const Icon(Icons.memory, color: green),
+          ),
+        );
+      } catch (_) {}
+    }
+    return const Icon(Icons.memory, color: green);
+  }
+
+  Future<String?> pickEquipmentImage() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 78,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+    if (picked == null) return null;
+    final bytes = await picked.readAsBytes();
+    if (bytes.length > 2 * 1024 * 1024) {
+      throw Exception('รูปภาพต้องมีขนาดไม่เกิน 2 MB');
+    }
+    final lower = picked.name.toLowerCase();
+    final mime =
+        lower.endsWith('.png')
+            ? 'image/png'
+            : lower.endsWith('.webp')
+            ? 'image/webp'
+            : 'image/jpeg';
+    return 'data:$mime;base64,${base64Encode(bytes)}';
+  }
+
+  Future<void> changeEquipmentImage(dynamic item) async {
+    try {
+      final imageUrl = await pickEquipmentImage();
+      if (imageUrl == null) return;
+      setState(() => item['imageUrl'] = imageUrl);
+      await widget.api.call(
+        '/equipment/${item['id']}',
+        method: 'PUT',
+        body: {
+          'code': item['code'],
+          'name': item['name'],
+          'category': item['category'],
+          'description': item['description'] ?? '',
+          'totalQuantity': item['totalQuantity'],
+          'status': item['status'],
+          'imageUrl': imageUrl,
+        },
+      );
+      await load();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('บันทึกรูปอุปกรณ์แล้ว')));
+      }
+    } catch (e) {
+      await load();
+      error(e);
+    }
+  }
+
   Widget equipmentCard(dynamic x, bool borrow) => Card(
     child: Padding(
       padding: const EdgeInsets.all(12),
@@ -556,7 +630,7 @@ class _HomePageState extends State<HomePage> {
                   color: const Color(0xfff3f6f4),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.memory, color: green),
+                child: equipmentImage(x),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -589,6 +663,12 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
+              if (admin && !borrow)
+                IconButton(
+                  tooltip: 'เพิ่มหรือเปลี่ยนรูป',
+                  onPressed: () => changeEquipmentImage(x),
+                  icon: const Icon(Icons.add_a_photo_outlined, color: green),
+                ),
               if (admin && !borrow)
                 IconButton(
                   tooltip: 'ลบอุปกรณ์',
@@ -1443,6 +1523,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> addEquipment() async {
+    String? imageUrl;
     final n = TextEditingController(),
         c = TextEditingController(),
         cat = TextEditingController(),
@@ -1482,6 +1563,28 @@ class _HomePageState extends State<HomePage> {
                     maxLines: 3,
                     decoration: const InputDecoration(labelText: 'รายละเอียด'),
                   ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        try {
+                          imageUrl = await pickEquipmentImage();
+                          if (imageUrl != null && ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('เลือกรูปอุปกรณ์แล้ว'),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          error(e);
+                        }
+                      },
+                      icon: const Icon(Icons.add_a_photo_outlined),
+                      label: const Text('เลือกรูปอุปกรณ์'),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1503,6 +1606,7 @@ class _HomePageState extends State<HomePage> {
                         'totalQuantity': int.tryParse(q.text) ?? 1,
                         'description': description.text.trim(),
                         'status': 'available',
+                        'imageUrl': imageUrl,
                       },
                     );
                     if (ctx.mounted) Navigator.pop(ctx);

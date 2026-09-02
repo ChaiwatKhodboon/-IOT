@@ -1,4 +1,4 @@
-const CACHE='iot-loan-v16-responsive-layout';
+const CACHE='iot-loan-v22-image-preview-save';
 const ASSETS=['/','/index.html','/styles.css','/bootstrap.js','/app.js','/auth-pages.js','/admin-ui.js','/manifest.webmanifest','/icons/IT.jpg'];
 
 self.addEventListener('install',event=>{

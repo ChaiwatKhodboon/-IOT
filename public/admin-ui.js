@@ -15,6 +15,54 @@
   };
 
   const originalStock=stock;
+  add=async function(){
+    $('#content').innerHTML=`
+      <h1 class="page-title">เพิ่มอุปกรณ์</h1>
+      <p class="subtitle">กรอกข้อมูลและแนบภาพอุปกรณ์เพื่อให้ผู้ใช้งานเห็นภาพจริง</p>
+      <form id="addForm">
+        <label class="field">ชื่ออุปกรณ์<input name="name" placeholder="เช่น ESP32" required></label>
+        <label class="field">รหัสอุปกรณ์<input name="code" placeholder="เช่น IOT-1234" required></label>
+        <label class="field">หมวดหมู่<input name="category" placeholder="เลือกหมวดหมู่" required></label>
+        <label class="field">จำนวนอุปกรณ์ทั้งหมด<input name="totalQuantity" type="number" min="1" value="1" required></label>
+        <label class="field">รายละเอียด<textarea name="description" rows="3"></textarea></label>
+        <div class="image-upload">
+          <div id="equipmentImagePreview" class="image-preview">ยังไม่ได้เลือกภาพ</div>
+          <label class="field">ภาพอุปกรณ์
+            <input id="equipmentImage" type="file" accept="image/jpeg,image/png,image/webp">
+            <span class="image-help">รองรับ JPG, PNG และ WebP ขนาดไม่เกิน 2 MB</span>
+          </label>
+        </div>
+        <input type="hidden" name="status" value="available">
+        <button class="button primary wide">▣ บันทึกข้อมูล</button>
+      </form>`;
+    let imageUrl='';
+    const input=$('#equipmentImage');
+    input.onchange=()=>{
+      const file=input.files[0];
+      if(!file){imageUrl='';$('#equipmentImagePreview').textContent='ยังไม่ได้เลือกภาพ';return;}
+      if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2*1024*1024){
+        input.value='';imageUrl='';
+        $('#equipmentImagePreview').textContent='ยังไม่ได้เลือกภาพ';
+        toast('รูปภาพต้องเป็น JPG, PNG หรือ WebP และไม่เกิน 2 MB',true);return;
+      }
+      const reader=new FileReader();
+      reader.onload=()=>{imageUrl=reader.result;$('#equipmentImagePreview').innerHTML=`<img src="${imageUrl}" alt="ตัวอย่างภาพอุปกรณ์">`;};
+      reader.readAsDataURL(file);
+    };
+    $('#addForm').onsubmit=async event=>{
+      event.preventDefault();
+      const button=event.submitter;
+      if(button)button.disabled=true;
+      try{
+        const data=Object.fromEntries(new FormData(event.target));
+        data.imageUrl=imageUrl;
+        await api('/equipment',{method:'POST',body:JSON.stringify(data)});
+        toast('บันทึกข้อมูลและภาพอุปกรณ์แล้ว');
+        location.hash='stock';
+      }catch(error){toast(error.message,true);if(button)button.disabled=false;}
+    };
+  };
+
   stock=async function(){
     state.equipment=await api('/equipment');
     $('#content').innerHTML=`
@@ -34,10 +82,51 @@
   window.renderAdminEquipment=function(items){
     if(!items.length)return '<div class="card empty-state">ไม่พบอุปกรณ์</div>';
     return items.map(item=>`<article class="card admin-equipment-card">
-      <div class="device-art">${icon(item)}</div>
+      <div class="device-art">${equipmentArt(item)}</div>
       <div><span class="badge ${item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available'}">${txt[item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available']}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">${esc(item.category)} · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
-      <button class="icon-delete" aria-label="ลบ ${esc(item.name)}" onclick="removeAdminEquipment(${item.id})">⌫</button>
+      <div class="admin-card-tools">
+        <input id="equipment-image-${item.id}" class="equipment-image-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="changeEquipmentImage(event,${item.id})">
+        <label class="icon-image" for="equipment-image-${item.id}" aria-label="เพิ่มหรือเปลี่ยนรูป ${esc(item.name)}" title="เพิ่มหรือเปลี่ยนรูป"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l1.5-2h5L16 7h4v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>${item.imageUrl?'เปลี่ยนรูป':'เพิ่มรูป'}</span></label>
+        <button type="button" class="icon-delete" aria-label="ลบ ${esc(item.name)}" title="ลบอุปกรณ์" onclick="removeAdminEquipment(${item.id})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M8 10v7M12 10v7M16 10v7M7 7l1 13h8l1-13"/></svg><span>ลบ</span></button>
+      </div>
     </article>`).join('');
+  };
+
+  window.changeEquipmentImage=function(event,id){
+    const item=state.equipment.find(value=>String(value.id)===String(id));
+    if(!item)return;
+    const input=event.currentTarget;
+    const file=input.files?.[0];
+    if(!file)return;
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2*1024*1024){
+      input.value='';
+      toast('รูปภาพต้องเป็น JPG, PNG หรือ WebP และไม่เกิน 2 MB',true);return;
+    }
+    const reader=new FileReader();
+    reader.onerror=()=>toast('ไม่สามารถอ่านไฟล์รูปภาพได้',true);
+    reader.onload=async()=>{
+      const previousImage=item.imageUrl;
+      item.imageUrl=reader.result;
+      const list=$('#adminEquipmentList');
+      if(list)list.innerHTML=renderAdminEquipment(state.equipment);
+      toast('กำลังบันทึกรูปภาพ...');
+      try{
+        await api(`/equipment/${id}`,{method:'PUT',body:JSON.stringify({
+          code:item.code,name:item.name,category:item.category,
+          description:item.description||'',totalQuantity:item.totalQuantity,
+          status:item.status,imageUrl:reader.result
+        })});
+        toast('บันทึกภาพอุปกรณ์แล้ว');
+        await stock();
+      }catch(error){
+        item.imageUrl=previousImage;
+        const currentList=$('#adminEquipmentList');
+        if(currentList)currentList.innerHTML=renderAdminEquipment(state.equipment);
+        input.value='';
+        toast(error.message||'บันทึกรูปภาพไม่สำเร็จ',true);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   window.removeAdminEquipment=async function(id){
@@ -75,7 +164,7 @@
   window.renderAdminLoans=function(items){
     if(!items.length)return '<div class="card empty-state">ไม่พบรายการยืม</div>';
     return items.map(item=>`<article class="card admin-loan-card">
-      <div class="admin-loan-top"><div class="device-art">▣</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">จำนวน ${item.quantity} ชิ้น</p></div><span class="badge ${item.status}">${txt[item.status]}</span></div>
+      <div class="admin-loan-top"><div class="device-art">${equipmentArt({imageUrl:item.imageUrl,name:item.equipmentName,category:''})}</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">จำนวน ${item.quantity} ชิ้น</p></div><span class="badge ${item.status}">${txt[item.status]}</span></div>
       <div class="borrower-row"><span class="borrower-avatar">${esc((item.borrowerName||'?')[0])}</span><div><small>ผู้ยืม</small><b>${esc(item.borrowerName)}</b><span>${esc(item.studentId||'ไม่มีรหัสนิสิต')}</span></div></div>
       <footer><span>วันที่ยืม <b>${date(item.borrowedAt)}</b></span><span>กำหนดคืน <b>${date(item.dueAt)}</b></span></footer>
     </article>`).join('');
@@ -98,7 +187,7 @@
   window.renderMaintenance=function(items){
     if(!items.length)return '<div class="card empty-state"><b>ไม่มีอุปกรณ์รอซ่อม</b><p class="meta">รายการที่มีหมายเหตุหรือระบุว่าชำรุดจะแสดงที่นี่</p></div>';
     return items.map(item=>`<article class="card maintenance-card ${item.returnCondition||'remark'}">
-      <div class="admin-loan-top"><div class="device-art">⚙</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">แจ้งโดย ${esc(item.borrowerName)}${item.studentId?` · ${esc(item.studentId)}`:''}</p></div>${item.returnCondition?`<span class="badge ${item.returnCondition}">${txt[item.returnCondition]}</span>`:'<span class="badge borrowed">มีหมายเหตุ</span>'}</div>
+      <div class="admin-loan-top"><div class="device-art">${equipmentArt({imageUrl:item.imageUrl,name:item.equipmentName,category:''})}</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">แจ้งโดย ${esc(item.borrowerName)}${item.studentId?` · ${esc(item.studentId)}`:''}</p></div>${item.returnCondition?`<span class="badge ${item.returnCondition}">${txt[item.returnCondition]}</span>`:'<span class="badge borrowed">มีหมายเหตุ</span>'}</div>
       <div class="issue-note"><small>หมายเหตุ</small><p>${esc(item.returnRemark||item.borrowRemark||'ไม่ได้ระบุรายละเอียด')}</p></div>
       <footer><span>วันที่แจ้ง/คืน <b>${date(item.returnedAt||item.borrowedAt)}</b></span>${['damaged','abnormal'].includes(item.returnCondition)?`<button class="button primary compact" onclick="completeRepair(${item.id})">✓ เสร็จสิ้น</button>`:''}</footer>
     </article>`).join('');
