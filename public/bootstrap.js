@@ -9,13 +9,13 @@
   appScript.src='/app.js?v=management-v3';
   appScript.onload=()=>{
     const authScript=document.createElement('script');
-    authScript.src='/auth-pages.js?v=auth-v9';
+    authScript.src='/auth-pages.js?v=password-tools-v1';
     authScript.onload=()=>{
       const adminScript=document.createElement('script');
-      adminScript.src='/admin-ui.js?v=management-v1';
+      adminScript.src='/admin-ui.js?v=borrower-avatar-v1';
       adminScript.onload=()=>{
         const managementScript=document.createElement('script');
-        managementScript.src='/management-ui.js?v=management-v3';
+        managementScript.src='/management-ui.js?v=scroll-reset-v1';
         document.body.appendChild(managementScript);
       };
       document.body.appendChild(adminScript);

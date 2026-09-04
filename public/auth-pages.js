@@ -11,8 +11,26 @@
       loginForm.reset();
       loginForm.querySelector('[name="username"]').value='';
       loginForm.querySelector('[name="password"]').value='';
+      loginForm.querySelectorAll('.password-field input').forEach(input=>input.type='password');
+      loginForm.querySelectorAll('.password-toggle').forEach(button=>button.setAttribute('aria-pressed','false'));
     }
   }
+
+  window.togglePassword=function(button){
+    const input=button.closest('.password-field')?.querySelector('input');
+    if(!input)return;
+    const showing=input.type==='text';
+    input.type=showing?'password':'text';
+    button.setAttribute('aria-pressed',String(!showing));
+    button.setAttribute('aria-label',showing?'แสดงรหัสผ่าน':'ซ่อนรหัสผ่าน');
+    input.focus({preventScroll:true});
+  };
+
+  window.forgotPassword=function(){
+    const username=loginForm.querySelector('[name="username"]').value.trim();
+    $('#modalBody').innerHTML=`<div class="forgot-dialog-icon">⚿</div><h2>ลืมรหัสผ่าน</h2><p class="subtitle">เพื่อความปลอดภัย ระบบไม่อนุญาตให้รีเซ็ตรหัสผ่านด้วยรหัสนิสิตเพียงอย่างเดียว</p><div class="forgot-help"><b>กรุณาติดต่อผู้ดูแลระบบ</b><span>แจ้งชื่อ-นามสกุล รหัสนิสิต และชื่อผู้ใช้เพื่อตรวจสอบตัวตน</span>${username?`<small>ชื่อผู้ใช้ที่กรอก: <strong>${esc(username)}</strong></small>`:''}</div><button class="button primary wide" type="button" onclick="modal.close()">เข้าใจแล้ว</button>`;
+    modal.showModal();
+  };
 
   clearLoginFields();
   setTimeout(clearLoginFields,100);

@@ -1,12 +1,86 @@
 (function managementFeatures(){
+  const defaultPreferences={theme:'light',language:'th',reduceMotion:false,confirmLogout:true};
+  const readPreferences=()=>{
+    try{return {...defaultPreferences,...JSON.parse(localStorage.getItem('preferences')||'{}')}}catch{return {...defaultPreferences}}
+  };
+  const resolveTheme=value=>value==='system'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):value;
+  const englishText={
+    'ระบบยืม-คืน อุปกรณ์ IoT':'IoT Equipment Loan System','สาขาเทคโนโลยีสารสนเทศ':'Information Technology','เมนูจัดการระบบ':'SYSTEM MENU',
+    'ตรวจเช็ค':'Dashboard','คลังอุปกรณ์':'Equipment','ติดตามการยืม':'Loan Tracking','ซ่อมบำรุง':'Maintenance','ผู้ใช้งาน':'Users','บัญชีของฉัน':'My Account','บัญชีAdmin':'Admin Account','บัญชีผู้ใช้งาน':'User Account',
+    'เข้าสู่ระบบ':'Sign in','ลงชื่อเข้าใช้ระบบ':'Sign in to continue','ชื่อผู้ใช้':'Username','รหัสผ่าน':'Password','ลืมรหัสผ่าน?':'Forgot password?','สมัครสมาชิกสำหรับผู้ใช้งาน':'Create a user account','สมัครสมาชิก':'Create account','ลงทะเบียนผู้ใช้ใหม่':'New user registration','มีบัญชีอยู่แล้ว / กลับเข้าสู่ระบบ':'Already registered? Sign in',
+    'ภาพรวมสถานะอุปกรณ์ทั้งหมดและความเคลื่อนไหวล่าสุด':'Overview of equipment status and recent activity','อุปกรณ์ทั้งหมด':'Total equipment','พร้อมใช้งาน':'Available','ถูกยืมอยู่':'On loan','ชำรุด/รอซ่อม':'Damaged / maintenance','ความเคลื่อนไหวล่าสุด':'Recent activity','ดูทั้งหมด':'View all',
+    'คลัง':'Equipment','จัดการข้อมูลอุปกรณ์ทั้งหมด':'Manage all equipment','เพิ่ม':'Add','แก้ไข':'Edit','ลบ':'Delete','เพิ่มรูป':'Add image','เปลี่ยนรูป':'Change image','รวมอุปกรณ์':'Total','ต้องซ่อม':'Needs repair',
+    'ตรวจสอบว่าใครกำลังยืมอุปกรณ์และกำหนดคืน':'Review borrowers and return deadlines','ดาวน์โหลด Excel':'Download Excel','ทั้งหมด':'All','กำลังยืม':'Borrowed','คืนแล้ว':'Returned','ผู้ยืม':'Borrower','วันที่ยืม':'Borrowed date','กำหนดคืน':'Due date','วันที่คืนจริง':'Returned date',
+    'จัดการบัญชีผู้ใช้':'User Management','แก้ไขข้อมูล':'Edit details','ดูการยืม':'View loans','ปิดบัญชี':'Disable account','เปิดบัญชี':'Enable account','ผู้ดูแลระบบ':'Administrator','นักศึกษา':'Student','ชื่อผู้ใช้':'Username','รหัสนิสิต':'Student ID','เปลี่ยนรูปโปรไฟล์':'Change profile image','เพิ่มรูปโปรไฟล์':'Add profile image','ออกจากระบบ':'Sign out',
+    'ตั้งค่าระบบ':'Settings','ธีมหน้าจอและการใช้งาน':'Appearance and preferences','รูปแบบหน้าจอ':'Appearance','สว่าง':'Light','มืด':'Dark','ตามระบบ':'System','การใช้งาน':'Behavior','ลดการเคลื่อนไหว':'Reduce motion','ยืนยันก่อนออกจากระบบ':'Confirm before signing out','บันทึกการตั้งค่า':'Save settings',
+    'บัญชีผู้ใช้':'User Account','จัดการข้อมูลส่วนตัว รูปโปรไฟล์ และการตั้งค่าบัญชี':'Manage personal information, profile image and account preferences','บัญชีใช้งานอยู่':'Account active','ชื่อ-นามสกุล':'Full name','ชื่อผู้ใช้ / อีเมล':'Username / Email','สิทธิ์การใช้งาน':'Access level','ผู้ใช้งานทั่วไป':'Standard user','ธีม ภาษา และการใช้งาน':'Theme, language and preferences','สิ้นสุดเซสชันการใช้งานบนอุปกรณ์นี้':'End the session on this device'
+  };
+  const originalText=new WeakMap(),originalAttributes=new WeakMap();
+  const translateElement=root=>{
+    const english=readPreferences().language==='en';
+    document.documentElement.lang=english?'en':'th';
+    document.title=english?'IoT Equipment Loan System':'ระบบยืมคืนอุปกรณ์ IoT';
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
+    while(node=walker.nextNode()){
+      if(!originalText.has(node))originalText.set(node,node.nodeValue);
+      const source=originalText.get(node),trimmed=source.trim();
+      node.nodeValue=english&&englishText[trimmed]?source.replace(trimmed,englishText[trimmed]):source;
+    }
+    root.querySelectorAll?.('[placeholder],[title],[aria-label]').forEach(element=>{
+      if(!originalAttributes.has(element))originalAttributes.set(element,{placeholder:element.getAttribute('placeholder'),title:element.getAttribute('title'),ariaLabel:element.getAttribute('aria-label')});
+      const values=originalAttributes.get(element);
+      for(const [property,attribute] of [['placeholder','placeholder'],['title','title'],['ariaLabel','aria-label']]){const source=values[property];if(source!=null)element.setAttribute(attribute,english?(englishText[source]||source):source)}
+    });
+  };
+  window.applyLanguage=()=>translateElement(document.body);
+  window.applyPreferences=function(){
+    const preferences=readPreferences();
+    document.documentElement.dataset.theme=resolveTheme(preferences.theme);
+    document.documentElement.dataset.reduceMotion=preferences.reduceMotion?'true':'false';
+    applyLanguage();
+  };
+  applyPreferences();
+  new MutationObserver(records=>{if(readPreferences().language==='en')records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===Node.ELEMENT_NODE)translateElement(node);else if(node.nodeType===Node.TEXT_NODE&&node.parentElement)translateElement(node.parentElement)}))}).observe(document.body,{childList:true,subtree:true});
+  matchMedia('(prefers-color-scheme:dark)').addEventListener?.('change',()=>{if(readPreferences().theme==='system')applyPreferences()});
+
+  window.openSettings=function(){
+    const preferences=readPreferences();
+    $('#modalBody').innerHTML=`<div class="settings-heading"><span class="settings-icon">⚙</span><div><h2>ตั้งค่าระบบ</h2><p class="subtitle">ปรับรูปแบบการแสดงผลให้เหมาะกับการใช้งาน</p></div></div><form id="settingsForm">
+      <label class="field settings-language">ภาษา / Language<select name="language"><option value="th" ${preferences.language==='th'?'selected':''}>ไทย</option><option value="en" ${preferences.language==='en'?'selected':''}>English</option></select></label>
+      <fieldset class="settings-group"><legend>รูปแบบหน้าจอ</legend><div class="theme-options">
+        <label class="theme-option"><input type="radio" name="theme" value="light" ${preferences.theme==='light'?'checked':''}><span class="theme-preview light-preview"><i></i></span><b>สว่าง</b></label>
+        <label class="theme-option"><input type="radio" name="theme" value="dark" ${preferences.theme==='dark'?'checked':''}><span class="theme-preview dark-preview"><i></i></span><b>มืด</b></label>
+        <label class="theme-option"><input type="radio" name="theme" value="system" ${preferences.theme==='system'?'checked':''}><span class="theme-preview system-preview"><i></i></span><b>ตามระบบ</b></label>
+      </div></fieldset>
+      <fieldset class="settings-group"><legend>การใช้งาน</legend>
+        <label class="setting-switch"><span><b>ลดการเคลื่อนไหว</b><small>ลดเอฟเฟกต์และแอนิเมชันในหน้าจอ</small></span><input name="reduceMotion" type="checkbox" ${preferences.reduceMotion?'checked':''}></label>
+        <label class="setting-switch"><span><b>ยืนยันก่อนออกจากระบบ</b><small>ป้องกันการกดออกจากระบบโดยไม่ตั้งใจ</small></span><input name="confirmLogout" type="checkbox" ${preferences.confirmLogout?'checked':''}></label>
+      </fieldset>
+      <button class="button primary wide" type="submit">บันทึกการตั้งค่า</button></form>`;
+    $('#settingsForm').onsubmit=event=>{event.preventDefault();const form=event.currentTarget;localStorage.setItem('preferences',JSON.stringify({theme:new FormData(form).get('theme')||'light',language:form.language.value||'th',reduceMotion:form.reduceMotion.checked,confirmLogout:form.confirmLogout.checked}));applyPreferences();modal.close();toast(readPreferences().language==='en'?'Settings saved':'บันทึกการตั้งค่าแล้ว')};
+    modal.showModal();
+  };
+
+  window.requestLogout=function(){
+    if(readPreferences().confirmLogout&&!confirm('ต้องการออกจากระบบใช่หรือไม่?'))return;
+    logout();
+  };
+  const managementIcon=name=>({
+    dashboard:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5V20h-5v-5H9v5H4z"/></svg>',
+    stock:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5zM4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
+    loans:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h12M14 4l3 3-3 3M19 17H7M10 14l-3 3 3 3"/></svg>',
+    maintenance:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-3 3-3-3z"/></svg>',
+    accounts:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-4 2.5-6 5.5-6s4.9 2 5.5 6M16 11h5M18.5 8.5v5"/></svg>',
+    profile:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-4.5 3-6.5 7-6.5s6.3 2 7 6.5"/></svg>'
+  }[name]);
   const isOverdue=loan=>loan.status==='borrowed'&&loan.dueAt&&new Date(loan.dueAt)<new Date();
   const overdueText=loan=>`เกินกำหนด ${loan.overdueDays||Math.max(1,Math.ceil((Date.now()-new Date(loan.dueAt))/86400000))} วัน`;
 
   const baseNav=nav;
   nav=function(){
     if(state.user?.role!=='admin')return baseNav();
-    const items=[['dashboard','⌂','ตรวจเช็ค'],['stock','▣','คลัง'],['loans','⇄','ติดตาม'],['maintenance','⌕','ซ่อมบำรุง'],['accounts','♙','ผู้ใช้งาน'],['profile','●','บัญชี']];
-    $('#bottomNav').innerHTML=items.map(([page,icon,label])=>`<a href="#${page}" data-p="${page}"><b>${icon}</b>${label}</a>`).join('');
+    const items=[['dashboard','ตรวจเช็ค'],['stock','คลังอุปกรณ์'],['loans','ติดตามการยืม'],['maintenance','ซ่อมบำรุง'],['accounts','ผู้ใช้งาน'],['profile','บัญชีของฉัน']];
+    $('#bottomNav').innerHTML=items.map(([page,label])=>`<a href="#${page}" data-p="${page}" aria-label="${label}"><b>${managementIcon(page)}</b><span>${label}</span></a>`).join('');
   };
 
   const baseLoanCard=loanCard;
@@ -93,6 +167,54 @@
     }catch(error){toast(error.message,true)}
   };
 
+  const inputDate=value=>{
+    const dateValue=new Date(value);
+    if(Number.isNaN(dateValue.getTime()))return '';
+    const offset=dateValue.getTimezoneOffset()*60000;
+    return new Date(dateValue-offset).toISOString().slice(0,10);
+  };
+
+  window.openLoanExport=function(){
+    const dates=state.loans.map(item=>new Date(item.borrowedAt)).filter(value=>!Number.isNaN(value.getTime()));
+    const first=dates.length?new Date(Math.min(...dates)):new Date();
+    const last=dates.length?new Date(Math.max(...dates)):new Date();
+    $('#modalBody').innerHTML=`<h2>ดาวน์โหลดข้อมูล Excel</h2><p class="subtitle">เลือกช่วงตามวันที่ยืม ระบบจะส่งออกทุกสถานะในช่วงที่เลือก</p><form id="loanExportForm">
+      <div class="export-range"><label class="field">ตั้งแต่วันที่<input name="from" type="date" value="${inputDate(first)}" required></label><label class="field">ถึงวันที่<input name="to" type="date" value="${inputDate(last)}" required></label></div>
+      <div class="export-note">ข้อมูลที่ได้: ผู้ยืม รหัสนิสิต อีเมล อุปกรณ์ จำนวน สถานะ วันยืม กำหนดคืน วันคืน สภาพและหมายเหตุ</div>
+      <button class="button primary wide" type="submit">ดาวน์โหลดข้อมูล</button></form>`;
+    $('#loanExportForm').onsubmit=event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.target));exportLoanExcel(values.from,values.to)};
+    modal.showModal();
+  };
+
+  const csvCell=value=>{
+    let text=value==null?'':String(value);
+    if(/^[=+\-@]/.test(text))text=`'${text}`;
+    return `"${text.replace(/"/g,'""')}"`;
+  };
+  const exportDate=value=>{
+    if(!value)return '';
+    const d=new Date(value);
+    if(Number.isNaN(d.getTime()))return '';
+    const pad=n=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  window.exportLoanExcel=async function(from,to){
+    try{
+      const start=new Date(`${from}T00:00:00`),end=new Date(`${to}T23:59:59.999`);
+      if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())||start>end){toast('กรุณาเลือกช่วงวันที่ให้ถูกต้อง',true);return;}
+      const [allLoans,users]=await Promise.all([api('/loans'),api('/users')]);
+      const userMap=new Map(users.map(user=>[String(user.id),user]));
+      const items=allLoans.filter(item=>{const borrowed=new Date(item.borrowedAt);return borrowed>=start&&borrowed<=end});
+      if(!items.length){toast('ไม่พบข้อมูลในช่วงวันที่ที่เลือก',true);return;}
+      const headers=['ลำดับ','รหัสรายการ','ชื่อ-นามสกุล','รหัสนิสิต','อีเมล/ชื่อผู้ใช้','สิทธิ์','รหัสอุปกรณ์','ชื่ออุปกรณ์','จำนวน','วันที่ยืม','กำหนดคืน','วันที่คืนจริง','สถานะ','สภาพตอนคืน','หมายเหตุการยืม','หมายเหตุการคืน'];
+      const rows=items.map((item,index)=>{const user=userMap.get(String(item.userId))||{};return [index+1,item.id,item.borrowerName,item.studentId||'',user.username||'',user.role==='admin'?'ผู้ดูแลระบบ':'ผู้ใช้งาน',item.equipmentCode,item.equipmentName,item.quantity,exportDate(item.borrowedAt),exportDate(item.dueAt),exportDate(item.returnedAt),txt[item.status]||item.status,txt[item.returnCondition]||item.returnCondition||'',item.borrowRemark||'',item.returnRemark||'']});
+      const csv=[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
+      const blob=new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download=`รายงานการยืม_${from}_ถึง_${to}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);modal.close();toast(`ดาวน์โหลดแล้ว ${items.length} รายการ`);
+    }catch(error){toast(error.message||'ดาวน์โหลดไม่สำเร็จ',true)}
+  };
+
   const baseRenderAdminLoans=window.renderAdminLoans;
   window.renderAdminLoans=function(items){
     const html=baseRenderAdminLoans(items);
@@ -102,6 +224,30 @@
     return shell.innerHTML;
   };
 
+  profile=function(){
+    const admin=state.user.role==='admin',avatar=state.user.avatarUrl?`<img src="${esc(state.user.avatarUrl)}" alt="รูปโปรไฟล์">`:`<span>${esc((state.user.fullName||state.user.username||'?')[0])}</span>`;
+    $('#content').innerHTML=`<section class="profile-page">
+      <header class="profile-page-head"><div><p class="profile-overline">ACCOUNT MANAGEMENT</p><h1 class="page-title">บัญชีผู้ใช้</h1><p class="subtitle">จัดการข้อมูลส่วนตัว รูปโปรไฟล์ และการตั้งค่าบัญชี</p></div><span class="profile-status"><i></i>บัญชีใช้งานอยู่</span></header>
+      <div class="profile-panel">
+        <div class="profile-identity"><div class="profile-avatar-large">${avatar}</div><div class="profile-primary"><span class="profile-role">${admin?'ผู้ดูแลระบบ':'นักศึกษา'}</span><h2>${esc(state.user.fullName)}</h2><p>${esc(state.user.username)}</p></div><div class="profile-upload"><input id="profileImageInput" class="profile-image-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="changeProfileImage(event)"><label for="profileImageInput" class="button secondary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l1.5-2h5L16 7h4v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${state.user.avatarUrl?'เปลี่ยนรูปโปรไฟล์':'เพิ่มรูปโปรไฟล์'}</label></div></div>
+        <div class="profile-divider"></div>
+        <div class="profile-details"><div class="profile-detail"><small>ชื่อ-นามสกุล</small><b>${esc(state.user.fullName)}</b></div><div class="profile-detail"><small>ชื่อผู้ใช้ / อีเมล</small><b>${esc(state.user.username)}</b></div><div class="profile-detail"><small>รหัสนิสิต</small><b>${esc(state.user.studentId||'-')}</b></div><div class="profile-detail"><small>สิทธิ์การใช้งาน</small><b>${admin?'ผู้ดูแลระบบ':'ผู้ใช้งานทั่วไป'}</b></div></div>
+      </div>
+      <div class="profile-actions"><button class="profile-action-card" type="button" onclick="openSettings()"><span class="profile-action-icon">⚙</span><span><b>ตั้งค่าระบบ</b><small>ธีม ภาษา และการใช้งาน</small></span><span class="profile-action-arrow">›</span></button><button class="profile-action-card danger" type="button" onclick="requestLogout()"><span class="profile-action-icon">⇥</span><span><b>ออกจากระบบ</b><small>สิ้นสุดเซสชันการใช้งานบนอุปกรณ์นี้</small></span><span class="profile-action-arrow">›</span></button></div>
+    </section>`;
+    applyLanguage();
+  };
+
   const baseRoute=route;
-  route=async function(){if(location.hash==='#accounts'){active('accounts');try{await accounts()}catch(error){toast(error.message,true)}return}return baseRoute()};
+  route=async function(){
+    const contentScroller=document.querySelector('main');
+    if(contentScroller)contentScroller.scrollTo({top:0,left:0,behavior:'auto'});
+    if(location.hash==='#accounts'){
+      active('accounts');
+      try{await accounts()}catch(error){toast(error.message,true)}
+      return;
+    }
+    await baseRoute();
+    if(contentScroller)contentScroller.scrollTop=0;
+  };
 })();

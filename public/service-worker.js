@@ -1,4 +1,4 @@
-const CACHE='iot-loan-v26-account-route';
+const CACHE='iot-loan-v40-borrower-avatar';
 const ASSETS=['/','/index.html','/styles.css','/bootstrap.js','/app.js','/auth-pages.js','/admin-ui.js','/management-ui.js','/manifest.webmanifest','/icons/IT.jpg'];
 
 self.addEventListener('install',event=>{

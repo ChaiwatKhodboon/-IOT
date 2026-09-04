@@ -267,7 +267,7 @@ class _HomePageState extends State<HomePage> {
   int index = 0;
   bool loading = false;
   Map<String, dynamic> stats = {};
-  List equipment = [], loans = [];
+  List equipment = [], loans = [], users = [];
   final Map<int, int> cart = {};
   String equipmentQuery = '', loanQuery = '';
   String loanFilter = 'all';
@@ -289,11 +289,13 @@ class _HomePageState extends State<HomePage> {
         widget.api.call('/dashboard'),
         widget.api.call('/equipment'),
         widget.api.call('/loans'),
+        if (admin) widget.api.call('/users'),
       ]);
       setState(() {
         stats = Map<String, dynamic>.from(values[0]);
         equipment = List.from(values[1]);
         loans = List.from(values[2]);
+        if (admin) users = List.from(values[3]);
       });
     } catch (e) {
       if (mounted) {
@@ -326,6 +328,10 @@ class _HomePageState extends State<HomePage> {
               label: 'ซ่อมบำรุง',
             ),
             NavigationDestination(
+              icon: Icon(Icons.manage_accounts_outlined),
+              label: 'ผู้ใช้',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.person_outline),
               label: 'บัญชี',
             ),
@@ -353,7 +359,14 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final pages =
         admin
-            ? [dashboard(), inventory(), tracking(), maintenance(), profile()]
+            ? [
+              dashboard(),
+              inventory(),
+              tracking(),
+              maintenance(),
+              accounts(),
+              profile(),
+            ]
             : [
               dashboard(),
               reviewingCart ? cartReviewPage() : inventory(borrow: true),
@@ -996,23 +1009,39 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 52,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: const Color(0xfff3f6f4),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: equipmentImage(x),
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  '${x['equipmentName']}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${x['equipmentName']}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      '${x['equipmentCode']} · จำนวน ${x['quantity']} ชิ้น',
+                      style: const TextStyle(fontSize: 10, color: muted),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
               status('${x['status']}'),
             ],
-          ),
-          Text(
-            '${x['equipmentCode']} · จำนวน ${x['quantity']} ชิ้น',
-            style: const TextStyle(fontSize: 10, color: muted),
           ),
           if (showBorrower)
             Container(
@@ -1042,7 +1071,7 @@ class _HomePageState extends State<HomePage> {
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '${x['studentId'] ?? 'ไม่มีรหัสนิสิต'}',
+                        'รหัสนิสิต: ${x['studentId'] ?? '-'}',
                         style: const TextStyle(fontSize: 10, color: muted),
                       ),
                     ],
@@ -1055,6 +1084,11 @@ class _HomePageState extends State<HomePage> {
             'วันที่ยืม ${fmt(x['borrowedAt'])}  ·  กำหนดคืน ${fmt(x['dueAt'])}',
             style: const TextStyle(fontSize: 10),
           ),
+          if (x['returnedAt'] != null)
+            Text(
+              'วันที่คืนจริง ${fmt(x['returnedAt'])}',
+              style: const TextStyle(fontSize: 10, color: green),
+            ),
           if (canReturn)
             SizedBox(
               width: double.infinity,
@@ -1158,11 +1192,331 @@ class _HomePageState extends State<HomePage> {
     ]);
   }
 
+  Widget avatar(dynamic value, {double radius = 24}) {
+    final data = value?.toString() ?? '';
+    if (data.startsWith('data:image/') && data.contains(',')) {
+      try {
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: MemoryImage(base64Decode(data.split(',').last)),
+        );
+      } catch (_) {}
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xffe7f3ed),
+      child: Icon(Icons.person, size: radius, color: green),
+    );
+  }
+
+  Widget accounts() =>
+      page('จัดการบัญชีผู้ใช้', 'ตรวจสอบสิทธิ์ สถานะ และรายการยืมของสมาชิก', [
+        TextField(
+          onChanged:
+              (value) =>
+                  setState(() => accountQuery = value.trim().toLowerCase()),
+          decoration: const InputDecoration(
+            hintText: 'ค้นหาชื่อ ชื่อผู้ใช้ หรือรหัสนิสิต...',
+            prefixIcon: Icon(Icons.search),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...users
+            .where(
+              (u) => '${u['fullName']} ${u['username']} ${u['studentId'] ?? ''}'
+                  .toLowerCase()
+                  .contains(accountQuery),
+            )
+            .map(accountCard),
+        if (users.isEmpty) const Empty(text: 'ไม่พบบัญชีผู้ใช้'),
+      ]);
+
+  String accountQuery = '';
+
+  Widget accountCard(dynamic u) => Card(
+    color: u['active'] == false ? const Color(0xfff1f1f1) : Colors.white,
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              avatar(u['avatarUrl']),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${u['fullName']}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      'อีเมล/ชื่อผู้ใช้: ${u['username']}',
+                      style: const TextStyle(color: muted, fontSize: 12),
+                    ),
+                    Text(
+                      'รหัสนิสิต: ${u['studentId'] ?? '-'}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    Text(
+                      'สิทธิ์: ${u['role'] == 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              status(u['active'] == false ? 'inactive' : 'active'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'กำลังยืม ${u['activeLoans'] ?? 0} · เกินกำหนด ${u['overdueLoans'] ?? 0}',
+            style: TextStyle(
+              color: number(u['overdueLoans']) > 0 ? red : muted,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => showUserLoans(u),
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('ดูอุปกรณ์และประวัติการยืม'),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => editAccount(u),
+                  child: const Text('แก้ไขข้อมูล'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: () => toggleAccount(u),
+                  child: Text(u['active'] == false ? 'เปิดบัญชี' : 'ปิดบัญชี'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Future<void> showUserLoans(dynamic user) async {
+    final items =
+        loans.where((loan) => '${loan['userId']}' == '${user['id']}').toList();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder:
+          (sheetContext) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: .85,
+            minChildSize: .5,
+            maxChildSize: .95,
+            builder:
+                (context, controller) => ListView(
+                  controller: controller,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Row(
+                      children: [
+                        avatar(user['avatarUrl'], radius: 28),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${user['fullName']}',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text('อีเมล/ชื่อผู้ใช้: ${user['username']}'),
+                              Text('รหัสนิสิต: ${user['studentId'] ?? '-'}'),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 28),
+                    Text(
+                      'ประวัติการยืมทั้งหมด ${items.length} รายการ',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    if (items.isEmpty)
+                      const Empty(text: 'ผู้ใช้ยังไม่มีประวัติการยืม')
+                    else
+                      ...items.map(loanCard),
+                  ],
+                ),
+          ),
+    );
+  }
+
+  Future<void> editAccount(dynamic u) async {
+    final name = TextEditingController(text: '${u['fullName']}');
+    final student = TextEditingController(text: '${u['studentId'] ?? ''}');
+    String role = u['role'] == 'admin' ? 'admin' : 'user';
+    bool active = u['active'] != false;
+    final save = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => StatefulBuilder(
+            builder:
+                (ctx, setModal) => AlertDialog(
+                  title: const Text('แก้ไขบัญชีผู้ใช้'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: name,
+                          decoration: const InputDecoration(
+                            labelText: 'ชื่อ-นามสกุล',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: student,
+                          decoration: const InputDecoration(
+                            labelText: 'รหัสนิสิต',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: role,
+                          decoration: const InputDecoration(
+                            labelText: 'สิทธิ์',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'user',
+                              child: Text('ผู้ใช้งาน'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'admin',
+                              child: Text('ผู้ดูแลระบบ'),
+                            ),
+                          ],
+                          onChanged: (v) => role = v!,
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('อนุญาตให้เข้าสู่ระบบ'),
+                          value: active,
+                          onChanged: (v) => setModal(() => active = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('ยกเลิก'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('บันทึก'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    if (save == true) {
+      await updateAccount(
+        u,
+        name.text.trim(),
+        student.text.trim(),
+        role,
+        active,
+      );
+    }
+  }
+
+  Future<void> toggleAccount(dynamic u) async => updateAccount(
+    u,
+    '${u['fullName']}',
+    '${u['studentId'] ?? ''}',
+    '${u['role']}',
+    u['active'] == false,
+  );
+
+  Future<void> updateAccount(
+    dynamic u,
+    String name,
+    String student,
+    String role,
+    bool active,
+  ) async {
+    try {
+      await widget.api.call(
+        '/users/${u['id']}',
+        method: 'PUT',
+        body: {
+          'fullName': name,
+          'studentId': student,
+          'role': role,
+          'active': active,
+        },
+      );
+      await load();
+    } catch (e) {
+      error(e);
+    }
+  }
+
+  Future<void> changeAvatar() async {
+    try {
+      final imageUrl = await pickEquipmentImage();
+      if (imageUrl == null) return;
+      final result = await widget.api.call(
+        '/auth/avatar',
+        method: 'PUT',
+        body: {'avatarUrl': imageUrl},
+      );
+      setState(() => widget.user['avatarUrl'] = result['avatarUrl']);
+    } catch (e) {
+      error(e);
+    }
+  }
+
   Widget profile() => page('บัญชี${admin ? ' Admin' : ''}', 'ข้อมูลผู้ใช้งาน', [
-    const CircleAvatar(
-      radius: 50,
-      backgroundColor: Color(0xffe7f3ed),
-      child: Icon(Icons.person, size: 48, color: green),
+    Center(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          avatar(widget.user['avatarUrl'], radius: 50),
+          Positioned(
+            right: -6,
+            bottom: -4,
+            child: IconButton.filled(
+              onPressed: changeAvatar,
+              icon: const Icon(Icons.camera_alt_outlined),
+              tooltip: 'เปลี่ยนรูปโปรไฟล์',
+            ),
+          ),
+        ],
+      ),
     ),
     Center(
       child: Text(
@@ -1185,7 +1539,13 @@ class _HomePageState extends State<HomePage> {
     ),
   ]);
   Widget status(String value) {
-    final bad = ['damaged', 'lost', 'abnormal', 'maintenance'].contains(value),
+    final bad = [
+          'damaged',
+          'lost',
+          'abnormal',
+          'maintenance',
+          'inactive',
+        ].contains(value),
         warn = value == 'borrowed';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1225,6 +1585,8 @@ class _HomePageState extends State<HomePage> {
         'damaged': 'ชำรุด',
         'lost': 'สูญหาย',
         'abnormal': 'ผิดปกติ',
+        'active': 'ใช้งานได้',
+        'inactive': 'ปิดใช้งาน',
       }[v] ??
       v;
   String fmt(dynamic v) {

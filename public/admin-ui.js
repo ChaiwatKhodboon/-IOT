@@ -143,8 +143,10 @@
     if(state.user?.role!=='admin')return originalLoans();
     state.loans=await api('/loans');
     $('#content').innerHTML=`
-      <h1 class="page-title">ติดตามการยืม</h1>
-      <p class="subtitle">ตรวจสอบว่าใครกำลังยืมอุปกรณ์และกำหนดคืน</p>
+      <div class="admin-page-head loan-page-head">
+        <div><h1 class="page-title">ติดตามการยืม</h1><p class="subtitle">ตรวจสอบว่าใครกำลังยืมอุปกรณ์และกำหนดคืน</p></div>
+        <button class="button primary export-button" type="button" onclick="openLoanExport()">⭳ ดาวน์โหลด Excel</button>
+      </div>
       <div class="search"><input id="adminLoanSearch" placeholder="ค้นหาชื่อผู้ยืม รหัสนิสิต หรืออุปกรณ์..."></div>
       <div class="filter-row"><button class="chip active" data-status="">ทั้งหมด</button><button class="chip" data-status="borrowed">กำลังยืม</button><button class="chip" data-status="returned">คืนแล้ว</button></div>
       <div id="adminLoanList">${renderAdminLoans(state.loans)}</div>`;
@@ -165,7 +167,7 @@
     if(!items.length)return '<div class="card empty-state">ไม่พบรายการยืม</div>';
     return items.map(item=>`<article class="card admin-loan-card">
       <div class="admin-loan-top"><div class="device-art">${equipmentArt({imageUrl:item.imageUrl,name:item.equipmentName,category:''})}</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">จำนวน ${item.quantity} ชิ้น</p></div><span class="badge ${item.status}">${txt[item.status]}</span></div>
-      <div class="borrower-row"><span class="borrower-avatar">${esc((item.borrowerName||'?')[0])}</span><div><small>ผู้ยืม</small><b>${esc(item.borrowerName)}</b><span>${esc(item.studentId||'ไม่มีรหัสนิสิต')}</span></div></div>
+      <div class="borrower-row"><span class="borrower-avatar">${item.borrowerAvatar?`<img src="${esc(item.borrowerAvatar)}" alt="รูปโปรไฟล์ ${esc(item.borrowerName)}">`:esc((item.borrowerName||'?')[0])}</span><div><small>ผู้ยืม</small><b>${esc(item.borrowerName)}</b><span>${esc(item.studentId||'ไม่มีรหัสนิสิต')}</span></div></div>
       <footer><span>วันที่ยืม <b>${date(item.borrowedAt)}</b></span><span>กำหนดคืน <b>${date(item.dueAt)}</b></span></footer>
     </article>`).join('');
   };
