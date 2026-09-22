@@ -1,4 +1,4 @@
-(function enhanceAdminUI(){
+{
   const svg=(name)=>({
     dashboard:'<svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>',
     stock:'<svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM7 4h10v3H7zM8 11h8M8 15h8"/></svg>',
@@ -7,15 +7,14 @@
     profile:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg>'
   }[name]);
 
-  const originalNav=nav;
-  nav=function(){
+  const originalNav=window.nav;
+  window.nav=function(){
     if(state.user?.role!=='admin')return originalNav();
     const items=[['dashboard','ตรวจเช็ค'],['stock','คลัง'],['loans','ติดตาม'],['maintenance','ซ่อมบำรุง'],['profile','บัญชี']];
     $('#bottomNav').innerHTML=items.map(([page,label])=>`<a href="#${page}" data-p="${page}"><b>${svg(page)}</b>${label}</a>`).join('');
   };
 
-  const originalStock=stock;
-  add=async function(){
+  window.add=async function(){
     $('#content').innerHTML=`
       <h1 class="page-title">เพิ่มอุปกรณ์</h1>
       <p class="subtitle">กรอกข้อมูลและแนบภาพอุปกรณ์เพื่อให้ผู้ใช้งานเห็นภาพจริง</p>
@@ -63,7 +62,7 @@
     };
   };
 
-  stock=async function(){
+  window.stock=async function(){
     state.equipment=await api('/equipment');
     $('#content').innerHTML=`
       <div class="admin-page-head">
@@ -79,17 +78,26 @@
     };
   };
 
+  const equipmentDisplayStatus=item=>{
+    if(item.status==='retired')return 'retired';
+    if((item.maintenanceQuantity||0)>0)return 'maintenance';
+    return 'available';
+  };
+
   window.renderAdminEquipment=function(items){
     if(!items.length)return '<div class="card empty-state">ไม่พบอุปกรณ์</div>';
-    return items.map(item=>`<article class="card admin-equipment-card">
+    return items.map(item=>{
+      const displayStatus=equipmentDisplayStatus(item);
+      return `<article class="card admin-equipment-card">
       <div class="device-art">${equipmentArt(item)}</div>
-      <div><span class="badge ${item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available'}">${txt[item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available']}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">${esc(item.category)} · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
+      <div><span class="badge ${displayStatus}">${txt[displayStatus]}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">${esc(item.category)} · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
       <div class="admin-card-tools">
         <input id="equipment-image-${item.id}" class="equipment-image-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="changeEquipmentImage(event,${item.id})">
         <label class="icon-image" for="equipment-image-${item.id}" aria-label="เพิ่มหรือเปลี่ยนรูป ${esc(item.name)}" title="เพิ่มหรือเปลี่ยนรูป"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l1.5-2h5L16 7h4v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>${item.imageUrl?'เปลี่ยนรูป':'เพิ่มรูป'}</span></label>
         <button type="button" class="icon-delete" aria-label="ลบ ${esc(item.name)}" title="ลบอุปกรณ์" onclick="removeAdminEquipment(${item.id})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M8 10v7M12 10v7M16 10v7M7 7l1 13h8l1-13"/></svg><span>ลบ</span></button>
       </div>
-    </article>`).join('');
+    </article>`;
+    }).join('');
   };
 
   window.changeEquipmentImage=function(event,id){
@@ -138,8 +146,8 @@
     }catch(error){toast(error.message,true);}
   };
 
-  const originalLoans=loans;
-  loans=async function(){
+  const originalLoans=window.loans;
+  window.loans=async function(){
     if(state.user?.role!=='admin')return originalLoans();
     state.loans=await api('/loans');
     $('#content').innerHTML=`
@@ -206,14 +214,14 @@
 
   window.addEventListener('hashchange',()=>{
     if(location.hash==='#maintenance'&&state.user?.role==='admin'){
-      active('maintenance');
+      window.active('maintenance');
       window.maintenance().catch(error=>toast(error.message,true));
     }
   });
 
   if(state.user?.role==='admin'){
-    nav();
+    window.nav();
     if(location.hash==='#maintenance')window.maintenance();
-    else active(location.hash.slice(1)||'dashboard');
+    else window.active(location.hash.slice(1)||'dashboard');
   }
-})();
+}

@@ -18,6 +18,8 @@ services:
       - "5432:5432"
   app:
     build: .
+    env_file:
+      - .env
     volumes:
       - ./public:/app/public:ro
     environment:

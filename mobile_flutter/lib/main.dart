@@ -1,19 +1,74 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
 
-void main() => runApp(const IoTLoanApp());
-const green = Color(0xff246d51),
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final preferences = await SharedPreferences.getInstance();
+  runApp(IoTLoanApp(preferences: preferences));
+}
+
+const green = Color(0xff086b4f),
     dark = Color(0xff17212d),
     cream = Color(0xfff3f1e9),
-    bg = Color(0xfff7f8fb),
-    muted = Color(0xff748078),
+    bg = Color(0xfff3f6f4),
+    muted = Color(0xff697871),
     red = Color(0xffd43b35),
     orange = Color(0xffdb7a14);
 
+class BrandLogo extends StatelessWidget {
+  final double size;
+  final bool elevated;
+
+  const BrandLogo({super.key, required this.size, this.elevated = false});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    padding: EdgeInsets.all(size * .055),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white,
+      border: Border.all(color: const Color(0xffdce5e0)),
+      boxShadow:
+          elevated
+              ? const [
+                BoxShadow(
+                  color: Color(0x1c102f23),
+                  blurRadius: 18,
+                  offset: Offset(0, 7),
+                ),
+              ]
+              : null,
+    ),
+    child: ClipOval(
+      child: Transform.scale(
+        scale: 1.16,
+        child: Image.asset(
+          'assets/IT.jpg',
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.high,
+          errorBuilder:
+              (_, __, ___) => const ColoredBox(
+                color: Colors.white,
+                child: Icon(Icons.memory, color: green),
+              ),
+        ),
+      ),
+    ),
+  );
+}
+
 class IoTLoanApp extends StatefulWidget {
-  const IoTLoanApp({super.key});
+  final SharedPreferences? preferences;
+  const IoTLoanApp({super.key, this.preferences});
   @override
   State<IoTLoanApp> createState() => _IoTLoanAppState();
 }
@@ -21,37 +76,152 @@ class IoTLoanApp extends StatefulWidget {
 class _IoTLoanAppState extends State<IoTLoanApp> {
   final api = Api();
   Map<String, dynamic>? user;
+  late ThemeMode themeMode;
+  late String language;
+
+  @override
+  void initState() {
+    super.initState();
+    themeMode = ThemeMode.values.firstWhere(
+      (mode) => mode.name == widget.preferences?.getString('themeMode'),
+      orElse: () => ThemeMode.system,
+    );
+    language = widget.preferences?.getString('language') ?? 'th';
+  }
+
+  void changeTheme(ThemeMode value) {
+    widget.preferences?.setString('themeMode', value.name);
+    setState(() => themeMode = value);
+  }
+
+  void changeLanguage(String value) {
+    widget.preferences?.setString('language', value);
+    setState(() => language = value);
+  }
+
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'ระบบยืมคืนอุปกรณ์ IoT',
     theme: ThemeData(
-      fontFamily: 'sans',
       scaffoldBackgroundColor: bg,
-      colorScheme: ColorScheme.fromSeed(seedColor: green),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: green,
+        surface: Colors.white,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: dark,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+      ),
+      cardTheme: CardTheme(
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 1,
+        shadowColor: const Color(0x17102f23),
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Color(0xffdce4df)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
       inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Color(0xffcbd3cf)),
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: green, width: 1.5),
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
         filled: true,
         fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: green,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: Color(0xfaffffff),
+        indicatorColor: Color(0xffe7f3ed),
+        elevation: 2,
+        height: 72,
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+      ),
+      dividerColor: const Color(0xffe2e8e4),
+      useMaterial3: true,
+    ),
+    darkTheme: ThemeData(
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: green,
+        brightness: Brightness.dark,
+      ),
+      scaffoldBackgroundColor: const Color(0xff101815),
+      cardTheme: CardTheme(
+        color: const Color(0xff17231f),
+        surfaceTintColor: Colors.transparent,
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Color(0xff34443d)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
+        filled: true,
+        fillColor: Color(0xff1b2924),
+      ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: Color(0xff121e19),
+        indicatorColor: Color(0xff193c2f),
+        height: 72,
+        labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 10)),
       ),
       useMaterial3: true,
     ),
+    themeMode: themeMode,
+    locale: Locale(language),
     builder:
         (context, child) => ColoredBox(
-          color: const Color(0xffe9eef2),
+          color:
+              Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xff0b110f)
+                  : const Color(0xffe9eef2),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
-              child: ColoredBox(color: bg, child: child ?? const SizedBox()),
+              child: child ?? const SizedBox(),
             ),
           ),
         ),
     home:
         user == null
-            ? AuthPage(api: api, onLogin: (u) => setState(() => user = u))
+            ? AuthPage(
+              api: api,
+              language: language,
+              onLogin: (u) => setState(() => user = u),
+            )
             : HomePage(
               api: api,
               user: user!,
+              language: language,
+              themeMode: themeMode,
+              onLanguageChanged: changeLanguage,
+              onThemeChanged: changeTheme,
               onLogout:
                   () => setState(() {
                     api.token = null;
@@ -63,8 +233,14 @@ class _IoTLoanAppState extends State<IoTLoanApp> {
 
 class AuthPage extends StatefulWidget {
   final Api api;
+  final String language;
   final ValueChanged<Map<String, dynamic>> onLogin;
-  const AuthPage({super.key, required this.api, required this.onLogin});
+  const AuthPage({
+    super.key,
+    required this.api,
+    required this.onLogin,
+    this.language = 'th',
+  });
   @override
   State<AuthPage> createState() => _AuthPageState();
 }
@@ -74,8 +250,9 @@ class _AuthPageState extends State<AuthPage> {
       pass = TextEditingController(),
       confirm = TextEditingController(),
       name = TextEditingController(),
+      email = TextEditingController(),
       student = TextEditingController();
-  bool signup = false, loading = false;
+  bool signup = false, loading = false, showPassword = false;
   Future<void> submit() async {
     if (user.text.trim().isEmpty || pass.text.isEmpty) {
       return message('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
@@ -91,6 +268,7 @@ class _AuthPageState extends State<AuthPage> {
           method: 'POST',
           body: {
             'username': user.text.trim(),
+            'email': email.text.trim(),
             'password': pass.text,
             'fullName': name.text.trim(),
             'studentId': student.text.trim(),
@@ -127,7 +305,7 @@ class _AuthPageState extends State<AuthPage> {
           Container(
             width: double.infinity,
             color: dark,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -150,25 +328,8 @@ class _AuthPageState extends State<AuthPage> {
               padding: const EdgeInsets.all(24),
               children: [
                 const SizedBox(height: 6),
-                Center(
-                  child: Container(
-                    width: 94,
-                    height: 94,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(50),
-                      border: Border.all(color: Colors.white, width: 7),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.asset(
-                      'assets/IT.jpg',
-                      width: 94,
-                      height: 94,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
+                const Center(child: BrandLogo(size: 104, elevated: true)),
+                const SizedBox(height: 14),
                 Text(
                   signup ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ',
                   textAlign: TextAlign.center,
@@ -180,17 +341,27 @@ class _AuthPageState extends State<AuthPage> {
                 ),
                 const SizedBox(height: 12),
                 Card(
-                  elevation: 3,
+                  elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (!signup)
+                          const Text(
+                            'STAFF SIGN IN',
+                            style: TextStyle(
+                              color: muted,
+                              fontSize: 10,
+                              letterSpacing: 1.4,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         Text(
                           signup ? 'ลงทะเบียนผู้ใช้ใหม่' : 'ลงชื่อเข้าใช้ระบบ',
                           style: const TextStyle(
                             fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         if (signup) ...[
@@ -198,6 +369,7 @@ class _AuthPageState extends State<AuthPage> {
                           field('รหัสนิสิต', student, number: true),
                         ],
                         field('ชื่อผู้ใช้หรืออีเมล', user),
+                        if (signup) field('อีเมลสำหรับกู้คืนรหัสผ่าน', email),
                         field('รหัสผ่าน', pass, secret: true),
                         if (signup)
                           field('ยืนยันรหัสผ่าน', confirm, secret: true),
@@ -214,6 +386,14 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                           ),
                         ),
+                        if (!signup)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: forgotPassword,
+                              child: const Text('ลืมรหัสผ่าน?'),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -242,22 +422,210 @@ class _AuthPageState extends State<AuthPage> {
     padding: const EdgeInsets.only(top: 13),
     child: TextField(
       controller: c,
-      obscureText: secret,
+      obscureText: secret && !showPassword,
       keyboardType: number ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixIcon:
+            secret
+                ? IconButton(
+                  onPressed: () => setState(() => showPassword = !showPassword),
+                  icon: Icon(
+                    showPassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  tooltip: showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน',
+                )
+                : null,
+      ),
     ),
   );
+
+  Future<void> forgotPassword() async {
+    final resetEmail = TextEditingController(
+      text: user.text.contains('@') ? user.text.trim() : '',
+    );
+    final otp = TextEditingController();
+    final newPassword = TextEditingController();
+    final confirmPassword = TextEditingController();
+    var otpSent = false;
+    var busy = false;
+    var showNewPassword = false;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !busy,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (context, setDialogState) => AlertDialog(
+                  icon: const Icon(Icons.lock_reset, color: green, size: 38),
+                  title: Text(otpSent ? 'กรอกรหัส OTP' : 'ลืมรหัสผ่าน'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          otpSent
+                              ? 'กรอกรหัส 6 หลักจากอีเมล รหัสมีอายุ 5 นาที'
+                              : 'ระบบจะส่งรหัส OTP ไปยังอีเมลที่ผูกกับบัญชี',
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: resetEmail,
+                          enabled: !otpSent,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(labelText: 'อีเมล'),
+                        ),
+                        if (otpSent) ...[
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: otp,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            decoration: const InputDecoration(
+                              labelText: 'รหัส OTP 6 หลัก',
+                              counterText: '',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: newPassword,
+                            obscureText: !showNewPassword,
+                            decoration: InputDecoration(
+                              labelText: 'รหัสผ่านใหม่',
+                              suffixIcon: IconButton(
+                                onPressed:
+                                    () => setDialogState(
+                                      () => showNewPassword = !showNewPassword,
+                                    ),
+                                icon: Icon(
+                                  showNewPassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: confirmPassword,
+                            obscureText: !showNewPassword,
+                            decoration: const InputDecoration(
+                              labelText: 'ยืนยันรหัสผ่านใหม่',
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: busy ? null : () => Navigator.pop(context),
+                      child: const Text('ยกเลิก'),
+                    ),
+                    if (otpSent)
+                      TextButton(
+                        onPressed:
+                            busy
+                                ? null
+                                : () => setDialogState(() => otpSent = false),
+                        child: const Text('ส่งใหม่'),
+                      ),
+                    FilledButton(
+                      onPressed:
+                          busy
+                              ? null
+                              : () async {
+                                final address = resetEmail.text.trim();
+                                if (!address.contains('@')) {
+                                  message('กรุณากรอกอีเมลให้ถูกต้อง');
+                                  return;
+                                }
+                                if (otpSent &&
+                                    (otp.text.length != 6 ||
+                                        newPassword.text.length < 8 ||
+                                        newPassword.text !=
+                                            confirmPassword.text)) {
+                                  message(
+                                    'ตรวจสอบ OTP และรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษรให้ตรงกัน',
+                                  );
+                                  return;
+                                }
+                                setDialogState(() => busy = true);
+                                try {
+                                  if (!otpSent) {
+                                    final result = await widget.api.call(
+                                      '/auth/forgot-password',
+                                      method: 'POST',
+                                      body: {'email': address},
+                                    );
+                                    if (!dialogContext.mounted) return;
+                                    setDialogState(() => otpSent = true);
+                                    message(result['message']);
+                                  } else {
+                                    final result = await widget.api.call(
+                                      '/auth/reset-password',
+                                      method: 'POST',
+                                      body: {
+                                        'email': address,
+                                        'otp': otp.text,
+                                        'password': newPassword.text,
+                                      },
+                                    );
+                                    if (!dialogContext.mounted) return;
+                                    Navigator.pop(dialogContext);
+                                    user.text = address;
+                                    pass.clear();
+                                    message(result['message']);
+                                  }
+                                } catch (error) {
+                                  message(
+                                    error.toString().replaceFirst(
+                                      'Exception: ',
+                                      '',
+                                    ),
+                                  );
+                                } finally {
+                                  if (dialogContext.mounted) {
+                                    setDialogState(() => busy = false);
+                                  }
+                                }
+                              },
+                      child: Text(
+                        busy
+                            ? 'กำลังดำเนินการ...'
+                            : otpSent
+                            ? 'ตั้งรหัสผ่านใหม่'
+                            : 'ส่งรหัส OTP',
+                      ),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    resetEmail.dispose();
+    otp.dispose();
+    newPassword.dispose();
+    confirmPassword.dispose();
+  }
 }
 
 class HomePage extends StatefulWidget {
   final Api api;
   final Map<String, dynamic> user;
   final VoidCallback onLogout;
+  final String language;
+  final ThemeMode themeMode;
+  final ValueChanged<String> onLanguageChanged;
+  final ValueChanged<ThemeMode> onThemeChanged;
   const HomePage({
     super.key,
     required this.api,
     required this.user,
     required this.onLogout,
+    required this.language,
+    required this.themeMode,
+    required this.onLanguageChanged,
+    required this.onThemeChanged,
   });
   @override
   State<HomePage> createState() => _HomePageState();
@@ -268,6 +636,7 @@ class _HomePageState extends State<HomePage> {
   bool loading = false;
   Map<String, dynamic> stats = {};
   List equipment = [], loans = [], users = [];
+  final Map<String, Uint8List> _decodedImageCache = {};
   final Map<int, int> cart = {};
   String equipmentQuery = '', loanQuery = '';
   String loanFilter = 'all';
@@ -276,6 +645,8 @@ class _HomePageState extends State<HomePage> {
   DateTime checkoutDue = DateTime.now().add(const Duration(days: 7));
   final checkoutRemark = TextEditingController();
   bool get admin => widget.user['role'] == 'admin';
+  bool get english => widget.language == 'en';
+  String tr(String thai, String englishText) => english ? englishText : thai;
   @override
   void initState() {
     super.initState();
@@ -308,107 +679,211 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Uint8List? decodedImage(String value) {
+    if (!value.startsWith('data:image/') || !value.contains(',')) return null;
+    final cached = _decodedImageCache[value];
+    if (cached != null) return cached;
+    try {
+      final bytes = base64Decode(value.substring(value.indexOf(',') + 1));
+      // Keep the cache bounded so a long session cannot retain every image forever.
+      if (_decodedImageCache.length >= 40) {
+        _decodedImageCache.remove(_decodedImageCache.keys.first);
+      }
+      _decodedImageCache[value] = bytes;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget currentPage() {
+    if (admin) {
+      switch (index) {
+        case 1:
+          return inventory();
+        case 2:
+          return tracking();
+        case 3:
+          return maintenance();
+        case 4:
+          return accounts();
+        case 5:
+          return profile();
+        default:
+          return dashboard();
+      }
+    }
+    switch (index) {
+      case 1:
+        return reviewingCart ? cartReviewPage() : inventory(borrow: true);
+      case 2:
+        return returns();
+      case 3:
+        return tracking();
+      case 4:
+        return profile();
+      default:
+        return dashboard();
+    }
+  }
+
   List<NavigationDestination> get destinations =>
       admin
-          ? const [
+          ? [
             NavigationDestination(
-              icon: Icon(Icons.grid_view),
-              label: 'ตรวจเช็ค',
+              icon: const Icon(Icons.grid_view),
+              label: tr('ตรวจเช็ค', 'Dashboard'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.inventory_2_outlined),
-              label: 'คลัง',
+              icon: const Icon(Icons.inventory_2_outlined),
+              label: tr('คลัง', 'Inventory'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.swap_horiz),
-              label: 'ติดตาม',
+              icon: const Icon(Icons.swap_horiz),
+              label: tr('ติดตาม', 'Loans'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.build_outlined),
-              label: 'ซ่อมบำรุง',
+              icon: const Icon(Icons.build_outlined),
+              label: tr('ซ่อมบำรุง', 'Repair'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.manage_accounts_outlined),
-              label: 'ผู้ใช้',
+              icon: const Icon(Icons.manage_accounts_outlined),
+              label: tr('ผู้ใช้', 'Users'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              label: 'บัญชี',
+              icon: const Icon(Icons.person_outline),
+              label: tr('บัญชี', 'Account'),
             ),
           ]
-          : const [
+          : [
             NavigationDestination(
-              icon: Icon(Icons.grid_view),
-              label: 'ตรวจเช็ค',
+              icon: const Icon(Icons.grid_view),
+              label: tr('ตรวจเช็ค', 'Dashboard'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.add_shopping_cart),
-              label: 'ยืม',
+              icon: const Icon(Icons.add_shopping_cart),
+              label: tr('ยืม', 'Borrow'),
             ),
             NavigationDestination(
-              icon: Icon(Icons.assignment_return_outlined),
-              label: 'คืน',
+              icon: const Icon(Icons.assignment_return_outlined),
+              label: tr('คืน', 'Return'),
             ),
-            NavigationDestination(icon: Icon(Icons.history), label: 'ประวัติ'),
             NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              label: 'บัญชี',
+              icon: const Icon(Icons.history),
+              label: tr('ประวัติ', 'History'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.person_outline),
+              label: tr('บัญชี', 'Account'),
             ),
           ];
   @override
   Widget build(BuildContext context) {
-    final pages =
-        admin
-            ? [
-              dashboard(),
-              inventory(),
-              tracking(),
-              maintenance(),
-              accounts(),
-              profile(),
-            ]
-            : [
-              dashboard(),
-              reviewingCart ? cartReviewPage() : inventory(borrow: true),
-              returns(),
-              tracking(),
-              profile(),
-            ];
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        toolbarHeight: 56,
         leading: Padding(
-          padding: const EdgeInsets.all(9),
-          child: ClipOval(
-            child: Image.asset('assets/IT.jpg', fit: BoxFit.cover),
-          ),
+          padding: const EdgeInsets.all(8),
+          child: const BrandLogo(size: 40),
         ),
         title: const Text(
           'ระบบยืม-คืน อุปกรณ์ IoT',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xff123c2f),
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         centerTitle: true,
+        actions: const [SizedBox(width: 56)],
       ),
       body: RefreshIndicator(
         onRefresh: load,
         child:
             loading && equipment.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : pages[index],
+                : currentPage(),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected:
-            (v) => setState(() {
-              index = v;
-              if (v != 1) reviewingCart = false;
-            }),
-        destinations: destinations,
-      ),
+      bottomNavigationBar: appNavigation(),
       bottomSheet:
           !admin && index == 1 && cart.isNotEmpty && !reviewingCart
               ? cartBar()
               : null,
+    );
+  }
+
+  Widget appNavigation() {
+    final items = destinations;
+    final darkMode = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 68,
+        decoration: BoxDecoration(
+          color: darkMode ? const Color(0xff16231d) : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color:
+                  darkMode ? const Color(0xff34443d) : const Color(0xffdce4df),
+            ),
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x100f2d22),
+              blurRadius: 12,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: List.generate(items.length, (itemIndex) {
+            final item = items[itemIndex];
+            final selected = index == itemIndex;
+            final color = selected ? green : const Color(0xff9aa7a1);
+            return Expanded(
+              child: InkWell(
+                onTap:
+                    () => setState(() {
+                      index = itemIndex;
+                      if (itemIndex != 1) reviewingCart = false;
+                    }),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      width: selected ? 26 : 0,
+                      height: 3,
+                      margin: const EdgeInsets.only(bottom: 5),
+                      decoration: BoxDecoration(
+                        color: selected ? green : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    IconTheme(
+                      data: IconThemeData(color: color, size: 20),
+                      child: item.icon,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: items.length > 5 ? 8 : 9,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
     );
   }
 
@@ -448,17 +923,23 @@ class _HomePageState extends State<HomePage> {
         ...loans.take(4).map((x) => loanCard(x, showBorrower: admin)),
       ]);
   Widget stat(String text, dynamic value, [Color color = dark]) => Card(
-    child: Container(
-      decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: color, width: 3)),
-      ),
-      padding: const EdgeInsets.all(12),
+    child: Padding(
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            width: 30,
+            height: 3,
+            margin: const EdgeInsets.only(bottom: 9),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
           Text(
             '${value ?? 0}',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w700),
           ),
           Text(text, style: const TextStyle(fontSize: 10, color: muted)),
         ],
@@ -559,20 +1040,20 @@ class _HomePageState extends State<HomePage> {
   );
   Widget equipmentImage(dynamic item) {
     final value = item['imageUrl']?.toString() ?? '';
-    if (value.startsWith('data:image/') && value.contains(',')) {
-      try {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Image.memory(
-            base64Decode(value.substring(value.indexOf(',') + 1)),
-            width: 52,
-            height: 58,
-            fit: BoxFit.cover,
-            errorBuilder:
-                (_, __, ___) => const Icon(Icons.memory, color: green),
-          ),
-        );
-      } catch (_) {}
+    final bytes = decodedImage(value);
+    if (bytes != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Image.memory(
+          bytes,
+          width: 52,
+          height: 58,
+          cacheWidth: 156,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => const Icon(Icons.memory, color: green),
+        ),
+      );
     }
     return const Icon(Icons.memory, color: green);
   }
@@ -653,9 +1134,12 @@ class _HomePageState extends State<HomePage> {
                     status(
                       x['status'] == 'retired'
                           ? 'retired'
-                          : (x['maintenanceQuantity'] ?? 0) > 0
+                          : (x['maintenanceQuantity'] ?? 0) > 0 &&
+                              x['maintenanceQuantity'] == x['totalQuantity']
                           ? 'maintenance'
-                          : 'available',
+                          : (x['availableQuantity'] ?? 0) > 0
+                          ? 'available'
+                          : 'outOfStock',
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -676,20 +1160,43 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              if (admin && !borrow)
-                IconButton(
-                  tooltip: 'เพิ่มหรือเปลี่ยนรูป',
-                  onPressed: () => changeEquipmentImage(x),
-                  icon: const Icon(Icons.add_a_photo_outlined, color: green),
-                ),
-              if (admin && !borrow)
-                IconButton(
-                  tooltip: 'ลบอุปกรณ์',
-                  onPressed: () => deleteEquipment(x),
-                  icon: const Icon(Icons.delete_outline, color: red),
-                ),
             ],
           ),
+          if (admin && !borrow) ...[
+            const SizedBox(height: 10),
+            const Divider(height: 1),
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => editEquipment(x),
+                    icon: const Icon(Icons.edit_outlined, size: 17),
+                    label: const Text('แก้ไข'),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => changeEquipmentImage(x),
+                    icon: const Icon(Icons.add_a_photo_outlined, size: 17),
+                    label: Text(
+                      x['imageUrl'] == null ? 'เพิ่มรูป' : 'เปลี่ยนรูป',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: red),
+                    onPressed: () => deleteEquipment(x),
+                    icon: const Icon(Icons.delete_outline, size: 17),
+                    label: const Text('ลบ'),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (borrow &&
               x['status'] != 'retired' &&
               number(x['availableQuantity']) > 0)
@@ -911,6 +1418,15 @@ class _HomePageState extends State<HomePage> {
     admin ? 'ตรวจสอบว่าใครกำลังยืมอุปกรณ์' : 'รายการยืม-คืนของคุณ',
     [
       if (!admin) historyStats(),
+      if (admin)
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: exportLoans,
+            icon: const Icon(Icons.file_download_outlined),
+            label: Text(tr('ส่งออก Excel', 'Export Excel')),
+          ),
+        ),
       TextField(
         onChanged:
             (value) => setState(() => loanQuery = value.trim().toLowerCase()),
@@ -1053,11 +1569,7 @@ class _HomePageState extends State<HomePage> {
               ),
               child: Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: green,
-                    child: Icon(Icons.person, color: Colors.white, size: 17),
-                  ),
+                  avatar(x['borrowerAvatar'], radius: 16),
                   const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1194,13 +1706,16 @@ class _HomePageState extends State<HomePage> {
 
   Widget avatar(dynamic value, {double radius = 24}) {
     final data = value?.toString() ?? '';
-    if (data.startsWith('data:image/') && data.contains(',')) {
-      try {
-        return CircleAvatar(
-          radius: radius,
-          backgroundImage: MemoryImage(base64Decode(data.split(',').last)),
-        );
-      } catch (_) {}
+    final bytes = decodedImage(data);
+    if (bytes != null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: ResizeImage(
+          MemoryImage(bytes),
+          width: (radius * 4).round(),
+          height: (radius * 4).round(),
+        ),
+      );
     }
     return CircleAvatar(
       radius: radius,
@@ -1375,6 +1890,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> editAccount(dynamic u) async {
     final name = TextEditingController(text: '${u['fullName']}');
+    final accountEmail = TextEditingController(text: '${u['email'] ?? ''}');
     final student = TextEditingController(text: '${u['studentId'] ?? ''}');
     String role = u['role'] == 'admin' ? 'admin' : 'user';
     bool active = u['active'] != false;
@@ -1393,6 +1909,14 @@ class _HomePageState extends State<HomePage> {
                           controller: name,
                           decoration: const InputDecoration(
                             labelText: 'ชื่อ-นามสกุล',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: accountEmail,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'อีเมลสำหรับกู้คืนรหัสผ่าน',
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -1446,6 +1970,7 @@ class _HomePageState extends State<HomePage> {
       await updateAccount(
         u,
         name.text.trim(),
+        accountEmail.text.trim(),
         student.text.trim(),
         role,
         active,
@@ -1456,6 +1981,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> toggleAccount(dynamic u) async => updateAccount(
     u,
     '${u['fullName']}',
+    '${u['email'] ?? ''}',
     '${u['studentId'] ?? ''}',
     '${u['role']}',
     u['active'] == false,
@@ -1464,6 +1990,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> updateAccount(
     dynamic u,
     String name,
+    String email,
     String student,
     String role,
     bool active,
@@ -1474,6 +2001,7 @@ class _HomePageState extends State<HomePage> {
         method: 'PUT',
         body: {
           'fullName': name,
+          'email': email,
           'studentId': student,
           'role': role,
           'active': active,
@@ -1500,50 +2028,646 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Widget profile() => page('บัญชี${admin ? ' Admin' : ''}', 'ข้อมูลผู้ใช้งาน', [
-    Center(
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          avatar(widget.user['avatarUrl'], radius: 50),
-          Positioned(
-            right: -6,
-            bottom: -4,
-            child: IconButton.filled(
-              onPressed: changeAvatar,
-              icon: const Icon(Icons.camera_alt_outlined),
-              tooltip: 'เปลี่ยนรูปโปรไฟล์',
+  void notice(String text) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
+  Future<void> changePasswordWithOtp() async {
+    final emailController = TextEditingController(
+      text: '${widget.user['email'] ?? ''}',
+    );
+    final address = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            icon: const Icon(Icons.mark_email_read_outlined, color: green),
+            title: Text(tr('เปลี่ยนรหัสผ่าน', 'Change password')),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  tr(
+                    'กรอกอีเมลที่ผูกกับบัญชี ระบบจะส่งรหัส OTP 6 หลักให้คุณ',
+                    'Enter the email linked to your account to receive a 6-digit OTP.',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: tr('อีเมล', 'Email'),
+                  ),
+                ),
+              ],
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(tr('ยกเลิก', 'Cancel')),
+              ),
+              FilledButton(
+                onPressed:
+                    () => Navigator.pop(ctx, emailController.text.trim()),
+                child: Text(tr('ส่งรหัส OTP', 'Send OTP')),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-    Center(
-      child: Text(
-        '${widget.user['fullName']}',
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      ),
-    ),
-    Card(
-      child: ListTile(
-        title: Text('${widget.user['username']}'),
-        subtitle: Text(
-          '${widget.user['studentId'] ?? (admin ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน')}',
+    );
+    emailController.dispose();
+    if (address == null) return;
+    if (!address.contains('@')) {
+      notice(tr('กรุณากรอกอีเมลให้ถูกต้อง', 'Enter a valid email address.'));
+      return;
+    }
+    try {
+      final result = await widget.api.call(
+        '/auth/forgot-password',
+        method: 'POST',
+        body: {'email': address},
+      );
+      notice('${result['message']}');
+    } catch (e) {
+      error(e);
+      return;
+    }
+    if (!context.mounted) return;
+
+    final otp = TextEditingController();
+    final newPassword = TextEditingController();
+    final confirmPassword = TextEditingController();
+    var showPassword = false;
+    while (context.mounted) {
+      final values = await showDialog<Map<String, String>>(
+        // Guarded by context.mounted at the start of every loop iteration.
+        // ignore: use_build_context_synchronously
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (ctx) => StatefulBuilder(
+              builder:
+                  (ctx, setModal) => AlertDialog(
+                    icon: const Icon(Icons.lock_reset, color: green),
+                    title: Text(tr('ยืนยัน OTP', 'Verify OTP')),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            tr(
+                              'กรอกรหัสจากอีเมล รหัสมีอายุ 5 นาที',
+                              'Enter the code from your email. It expires in 5 minutes.',
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: otp,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            decoration: InputDecoration(
+                              labelText: tr('รหัส OTP 6 หลัก', '6-digit OTP'),
+                              counterText: '',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: newPassword,
+                            obscureText: !showPassword,
+                            decoration: InputDecoration(
+                              labelText: tr('รหัสผ่านใหม่', 'New password'),
+                              suffixIcon: IconButton(
+                                onPressed:
+                                    () => setModal(
+                                      () => showPassword = !showPassword,
+                                    ),
+                                icon: Icon(
+                                  showPassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: confirmPassword,
+                            obscureText: !showPassword,
+                            decoration: InputDecoration(
+                              labelText: tr(
+                                'ยืนยันรหัสผ่านใหม่',
+                                'Confirm new password',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(tr('ยกเลิก', 'Cancel')),
+                      ),
+                      FilledButton(
+                        onPressed:
+                            () => Navigator.pop(ctx, {
+                              'otp': otp.text.trim(),
+                              'password': newPassword.text,
+                              'confirm': confirmPassword.text,
+                            }),
+                        child: Text(
+                          tr('ตั้งรหัสผ่านใหม่', 'Set new password'),
+                        ),
+                      ),
+                    ],
+                  ),
+            ),
+      );
+      if (values == null) break;
+      if (values['otp']?.length != 6 ||
+          (values['password']?.length ?? 0) < 8 ||
+          values['password'] != values['confirm']) {
+        notice(
+          tr(
+            'ตรวจสอบ OTP และรหัสผ่านอย่างน้อย 8 ตัวอักษรให้ตรงกัน',
+            'Check the OTP and ensure both passwords match and contain at least 8 characters.',
+          ),
+        );
+        continue;
+      }
+      try {
+        final result = await widget.api.call(
+          '/auth/reset-password',
+          method: 'POST',
+          body: {
+            'email': address,
+            'otp': values['otp'],
+            'password': values['password'],
+          },
+        );
+        notice('${result['message']}');
+        widget.onLogout();
+        break;
+      } catch (e) {
+        error(e);
+      }
+    }
+    otp.dispose();
+    newPassword.dispose();
+    confirmPassword.dispose();
+  }
+
+  Widget profile() => page(
+    tr('บัญชี${admin ? ' Admin' : ''}', admin ? 'Admin account' : 'Account'),
+    tr('จัดการข้อมูลและการตั้งค่าบัญชี', 'Manage your profile and preferences'),
+    [
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      avatar(widget.user['avatarUrl'], radius: 43),
+                      Positioned(
+                        right: -4,
+                        bottom: -4,
+                        child: IconButton.filled(
+                          visualDensity: VisualDensity.compact,
+                          onPressed: changeAvatar,
+                          icon: const Icon(Icons.camera_alt_outlined, size: 17),
+                          tooltip: tr('เปลี่ยนรูปโปรไฟล์', 'Change photo'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          admin ? 'ADMINISTRATOR' : 'MEMBER',
+                          style: const TextStyle(
+                            color: green,
+                            fontSize: 9,
+                            letterSpacing: 1.1,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${widget.user['fullName']}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          admin
+                              ? tr('ผู้ดูแลระบบ', 'System administrator')
+                              : tr('ผู้ใช้งาน', 'User'),
+                          style: const TextStyle(color: muted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 30),
+              profileDetail(
+                tr('ชื่อผู้ใช้หรืออีเมล', 'Username or email'),
+                '${widget.user['username']}',
+                Icons.alternate_email,
+              ),
+              const SizedBox(height: 10),
+              profileDetail(
+                tr('อีเมล', 'Email'),
+                '${widget.user['email'] ?? '-'}',
+                Icons.email_outlined,
+              ),
+              const SizedBox(height: 10),
+              profileDetail(
+                tr('รหัสนิสิต', 'Student ID'),
+                '${widget.user['studentId'] ?? '-'}',
+                Icons.badge_outlined,
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: changeAvatar,
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                  label: Text(tr('เปลี่ยนรูปโปรไฟล์', 'Change profile photo')),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+      const SizedBox(height: 5),
+      Card(
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 6,
+          ),
+          leading: const CircleAvatar(
+            backgroundColor: Color(0xffe7f3ed),
+            child: Icon(Icons.lock_reset, color: green),
+          ),
+          title: Text(
+            tr('เปลี่ยนรหัสผ่าน', 'Change password'),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            tr(
+              'ยืนยันตัวตนด้วย OTP ทางอีเมล',
+              'Verify your identity with an email OTP',
+            ),
+            style: const TextStyle(fontSize: 11),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: changePasswordWithOtp,
+        ),
+      ),
+      Card(
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 6,
+          ),
+          leading: const CircleAvatar(
+            backgroundColor: Color(0xffe7f3ed),
+            child: Icon(Icons.settings_outlined, color: green),
+          ),
+          title: Text(
+            tr('ตั้งค่าระบบ', 'Settings'),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            tr('ธีม ภาษา และการใช้งาน', 'Theme, language and application'),
+            style: const TextStyle(fontSize: 11),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: openSettings,
+        ),
+      ),
+      Card(
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 6,
+          ),
+          leading: const CircleAvatar(
+            backgroundColor: Color(0xffffe9e7),
+            child: Icon(Icons.logout, color: red),
+          ),
+          title: Text(
+            tr('ออกจากระบบ', 'Sign out'),
+            style: const TextStyle(color: red, fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            tr('ออกจากบัญชีบนอุปกรณ์นี้', 'Sign out from this device'),
+            style: const TextStyle(fontSize: 11),
+          ),
+          trailing: const Icon(Icons.chevron_right, color: red),
+          onTap: requestLogout,
+        ),
+      ),
+    ],
+  );
+
+  Widget profileDetail(String title, String value, IconData icon) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color:
+          Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xff1b2923)
+              : const Color(0xfff3f6f4),
+      borderRadius: BorderRadius.circular(8),
     ),
-    OutlinedButton.icon(
-      onPressed: widget.onLogout,
-      icon: const Icon(Icons.logout, color: red),
-      label: const Text('ออกจากระบบ', style: TextStyle(color: red)),
+    child: Row(
+      children: [
+        Icon(icon, color: green, size: 20),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(color: muted, fontSize: 9)),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
     ),
-  ]);
+  );
+
+  Future<void> openSettings() async {
+    ThemeMode selectedTheme = widget.themeMode;
+    String selectedLanguage = widget.language;
+    await showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (context, setModal) => AlertDialog(
+                  title: Row(
+                    children: [
+                      const Icon(Icons.settings_outlined, color: green),
+                      const SizedBox(width: 10),
+                      Text(tr('ตั้งค่าระบบ', 'Settings')),
+                    ],
+                  ),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr('รูปแบบการแสดงผล', 'Appearance'),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        RadioListTile<ThemeMode>(
+                          value: ThemeMode.light,
+                          groupValue: selectedTheme,
+                          title: Text(tr('สว่าง', 'Light')),
+                          secondary: const Icon(Icons.light_mode_outlined),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setModal(() => selectedTheme = value);
+                            widget.onThemeChanged(value);
+                          },
+                        ),
+                        RadioListTile<ThemeMode>(
+                          value: ThemeMode.dark,
+                          groupValue: selectedTheme,
+                          title: Text(tr('มืด', 'Dark')),
+                          secondary: const Icon(Icons.dark_mode_outlined),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setModal(() => selectedTheme = value);
+                            widget.onThemeChanged(value);
+                          },
+                        ),
+                        RadioListTile<ThemeMode>(
+                          value: ThemeMode.system,
+                          groupValue: selectedTheme,
+                          title: Text(tr('ตามระบบ', 'System default')),
+                          secondary: const Icon(Icons.brightness_auto_outlined),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setModal(() => selectedTheme = value);
+                            widget.onThemeChanged(value);
+                          },
+                        ),
+                        const Divider(),
+                        Text(
+                          tr('ภาษา', 'Language'),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        DropdownButtonFormField<String>(
+                          value: selectedLanguage,
+                          items: const [
+                            DropdownMenuItem(value: 'th', child: Text('ไทย')),
+                            DropdownMenuItem(
+                              value: 'en',
+                              child: Text('English'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setModal(() => selectedLanguage = value);
+                            widget.onLanguageChanged(value);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(tr('เสร็จสิ้น', 'Done')),
+                    ),
+                  ],
+                ),
+          ),
+    );
+  }
+
+  Future<void> requestLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text(tr('ออกจากระบบ', 'Sign out')),
+            content: Text(
+              tr('ต้องการออกจากระบบใช่หรือไม่?', 'Do you want to sign out?'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(tr('ยกเลิก', 'Cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(tr('ออกจากระบบ', 'Sign out')),
+              ),
+            ],
+          ),
+    );
+    if (confirmed == true) widget.onLogout();
+  }
+
+  Future<void> exportLoans() async {
+    DateTime from = DateTime.now().subtract(const Duration(days: 30));
+    DateTime to = DateTime.now();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (context, setModal) => AlertDialog(
+                  title: Text(tr('ส่งออกข้อมูลการยืม', 'Export loan data')),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.calendar_today_outlined),
+                        title: Text(tr('ตั้งแต่วันที่', 'From')),
+                        subtitle: Text(fmt(from.toIso8601String())),
+                        onTap: () async {
+                          final value = await showDatePicker(
+                            context: context,
+                            initialDate: from,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 3650),
+                            ),
+                          );
+                          if (value != null) setModal(() => from = value);
+                        },
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.event_available_outlined),
+                        title: Text(tr('ถึงวันที่', 'To')),
+                        subtitle: Text(fmt(to.toIso8601String())),
+                        onTap: () async {
+                          final value = await showDatePicker(
+                            context: context,
+                            initialDate: to,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 3650),
+                            ),
+                          );
+                          if (value != null) setModal(() => to = value);
+                        },
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: Text(tr('ยกเลิก', 'Cancel')),
+                    ),
+                    FilledButton.icon(
+                      onPressed:
+                          () => Navigator.pop(dialogContext, !from.isAfter(to)),
+                      icon: const Icon(Icons.download_outlined),
+                      label: Text(tr('สร้างไฟล์', 'Create file')),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    if (accepted != true) {
+      if (from.isAfter(to)) error('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด');
+      return;
+    }
+
+    final end = DateTime(to.year, to.month, to.day, 23, 59, 59, 999);
+    final selected =
+        loans.where((loan) {
+          final date = DateTime.tryParse('${loan['borrowedAt']}')?.toLocal();
+          return date != null && !date.isBefore(from) && !date.isAfter(end);
+        }).toList();
+    if (selected.isEmpty) {
+      error(tr('ไม่พบข้อมูลในช่วงวันที่เลือก', 'No data in this date range'));
+      return;
+    }
+
+    final usersById = {for (final item in users) '${item['id']}': item};
+    final rows = <List<dynamic>>[
+      [
+        'Loan ID',
+        'ชื่อผู้ใช้',
+        'รหัสนิสิต',
+        'อีเมล/Username',
+        'สิทธิ์',
+        'รหัสอุปกรณ์',
+        'อุปกรณ์',
+        'จำนวน',
+        'วันที่ยืม',
+        'กำหนดคืน',
+        'วันที่คืนจริง',
+        'สถานะ',
+        'สภาพเมื่อคืน',
+        'หมายเหตุการยืม',
+        'หมายเหตุการคืน',
+      ],
+      ...selected.map((loan) {
+        final account = usersById['${loan['userId']}'];
+        return [
+          loan['id'],
+          loan['borrowerName'],
+          loan['studentId'],
+          account?['username'],
+          account?['role'],
+          loan['equipmentCode'],
+          loan['equipmentName'],
+          loan['quantity'],
+          fmt(loan['borrowedAt']),
+          fmt(loan['dueAt']),
+          fmt(loan['returnedAt']),
+          label('${loan['status']}'),
+          label('${loan['returnCondition'] ?? ''}'),
+          loan['borrowRemark'],
+          loan['returnRemark'],
+        ];
+      }),
+    ];
+    final csv =
+        '\ufeff${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}';
+    final directory = await getTemporaryDirectory();
+    final filename =
+        'iot-loans-${from.year}-${from.month.toString().padLeft(2, '0')}-${from.day.toString().padLeft(2, '0')}-to-${to.year}-${to.month.toString().padLeft(2, '0')}-${to.day.toString().padLeft(2, '0')}.csv';
+    final file = File('${directory.path}${Platform.pathSeparator}$filename');
+    await file.writeAsString(csv, encoding: utf8, flush: true);
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'text/csv')],
+      subject: filename,
+      text: tr('ข้อมูลการยืมอุปกรณ์', 'Equipment loan data'),
+    );
+  }
+
+  String csvCell(dynamic value) {
+    final text = value?.toString() ?? '';
+    return '"${text.replaceAll('"', '""')}"';
+  }
+
   Widget status(String value) {
     final bad = [
           'damaged',
           'lost',
           'abnormal',
           'maintenance',
+          'outOfStock',
           'inactive',
         ].contains(value),
         warn = value == 'borrowed';
@@ -1577,6 +2701,7 @@ class _HomePageState extends State<HomePage> {
   String label(String v) =>
       {
         'available': 'พร้อมยืม',
+        'outOfStock': 'หมด',
         'maintenance': 'ซ่อมบำรุง',
         'retired': 'เลิกใช้งาน',
         'borrowed': 'กำลังยืม',
@@ -1879,6 +3004,152 @@ class _HomePageState extends State<HomePage> {
         body: {'condition': condition, 'remark': remark.text.trim()},
       );
       load();
+    } catch (e) {
+      error(e);
+    }
+  }
+
+  Future<void> editEquipment(dynamic item) async {
+    final name = TextEditingController(text: '${item['name'] ?? ''}');
+    final code = TextEditingController(text: '${item['code'] ?? ''}');
+    final category = TextEditingController(text: '${item['category'] ?? ''}');
+    final quantity = TextEditingController(
+      text: '${item['totalQuantity'] ?? 1}',
+    );
+    final description = TextEditingController(
+      text: '${item['description'] ?? ''}',
+    );
+    String selectedStatus = '${item['status'] ?? 'available'}';
+    final saved = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (context, setDialogState) => AlertDialog(
+                  title: const Text('แก้ไขอุปกรณ์'),
+                  content: SizedBox(
+                    width: 420,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ปรับข้อมูลอุปกรณ์และสถานะการใช้งาน',
+                            style: TextStyle(color: muted, fontSize: 12),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: name,
+                            decoration: const InputDecoration(
+                              labelText: 'ชื่ออุปกรณ์',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: code,
+                            decoration: const InputDecoration(
+                              labelText: 'รหัสอุปกรณ์',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: category,
+                            decoration: const InputDecoration(
+                              labelText: 'หมวดหมู่',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: quantity,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'จำนวนทั้งหมด',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String>(
+                            value: selectedStatus,
+                            decoration: const InputDecoration(
+                              labelText: 'สถานะ',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'available',
+                                child: Text('พร้อมใช้งาน'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'maintenance',
+                                child: Text('ซ่อมบำรุง'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'retired',
+                                child: Text('เลิกใช้งาน'),
+                              ),
+                            ],
+                            onChanged:
+                                (value) => setDialogState(
+                                  () => selectedStatus = value ?? 'available',
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: description,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              labelText: 'รายละเอียด',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('ยกเลิก'),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        if (name.text.trim().isEmpty ||
+                            code.text.trim().isEmpty ||
+                            category.text.trim().isEmpty ||
+                            (int.tryParse(quantity.text) ?? 0) < 1) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('กรุณากรอกข้อมูลให้ครบถ้วน'),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.pop(dialogContext, true);
+                      },
+                      child: const Text('บันทึกการแก้ไข'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    if (saved != true) return;
+    try {
+      await widget.api.call(
+        '/equipment/${item['id']}',
+        method: 'PUT',
+        body: {
+          'name': name.text.trim(),
+          'code': code.text.trim(),
+          'category': category.text.trim(),
+          'totalQuantity': int.parse(quantity.text),
+          'description': description.text.trim(),
+          'status': selectedStatus,
+          'imageUrl': item['imageUrl'],
+        },
+      );
+      await load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('แก้ไขอุปกรณ์เรียบร้อยแล้ว')),
+        );
+      }
     } catch (e) {
       error(e);
     }

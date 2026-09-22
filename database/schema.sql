@@ -6,6 +6,8 @@ CREATE TYPE condition_status AS ENUM ('normal', 'damaged', 'lost', 'abnormal');
 CREATE TABLE users (
   id BIGSERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(254),
+  google_sub VARCHAR(255),
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(120) NOT NULL,
   student_id VARCHAR(20),
@@ -49,3 +51,16 @@ CREATE TABLE loans (
 CREATE INDEX idx_equipment_search ON equipment (name, code, category);
 CREATE INDEX idx_loans_user ON loans (user_id, borrowed_at DESC);
 CREATE INDEX idx_loans_status ON loans (status, borrowed_at DESC);
+CREATE UNIQUE INDEX users_email_unique ON users (LOWER(email)) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX users_google_sub_unique ON users (google_sub) WHERE google_sub IS NOT NULL;
+
+CREATE TABLE password_reset_otps (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  otp_hash CHAR(64) NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  attempts SMALLINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX password_reset_otps_user_created ON password_reset_otps (user_id, created_at DESC);

@@ -26,11 +26,44 @@
     input.focus({preventScroll:true});
   };
 
-  window.forgotPassword=function(){
-    const username=loginForm.querySelector('[name="username"]').value.trim();
-    $('#modalBody').innerHTML=`<div class="forgot-dialog-icon">⚿</div><h2>ลืมรหัสผ่าน</h2><p class="subtitle">เพื่อความปลอดภัย ระบบไม่อนุญาตให้รีเซ็ตรหัสผ่านด้วยรหัสนิสิตเพียงอย่างเดียว</p><div class="forgot-help"><b>กรุณาติดต่อผู้ดูแลระบบ</b><span>แจ้งชื่อ-นามสกุล รหัสนิสิต และชื่อผู้ใช้เพื่อตรวจสอบตัวตน</span>${username?`<small>ชื่อผู้ใช้ที่กรอก: <strong>${esc(username)}</strong></small>`:''}</div><button class="button primary wide" type="button" onclick="modal.close()">เข้าใจแล้ว</button>`;
+  let passwordFlow='forgot';
+  window.forgotPassword=function(defaultEmail='',flow='forgot'){
+    passwordFlow=flow;
+    const entered=loginForm.querySelector('[name="username"]').value.trim();
+    const suggested=defaultEmail||(entered.includes('@')?entered:'');
+    const title=flow==='change'?'เปลี่ยนรหัสผ่าน':'ลืมรหัสผ่าน';
+    $('#modalBody').innerHTML=`<div class="forgot-dialog-icon">✉</div><h2>${title}</h2><p class="subtitle">กรอกอีเมลที่ผูกกับบัญชี ระบบจะส่งรหัส OTP 6 หลักให้คุณ</p><form id="otpRequestForm"><label class="field">อีเมล<input name="email" type="email" autocomplete="email" value="${esc(suggested)}" placeholder="name@example.com" required></label><button class="button primary wide">ส่งรหัส OTP</button></form>`;
     modal.showModal();
+    $('#otpRequestForm').onsubmit=requestOtp;
   };
+
+  async function requestOtp(event){
+    event.preventDefault();
+    const button=event.currentTarget.querySelector('button');
+    const email=event.currentTarget.email.value.trim().toLowerCase();
+    button.disabled=true;button.textContent='กำลังส่ง...';
+    try{
+      const result=await api('/auth/forgot-password',{method:'POST',body:JSON.stringify({email})});
+      $('#modalBody').innerHTML=`<div class="forgot-dialog-icon">✓</div><h2>ตรวจสอบอีเมล</h2><p class="subtitle">${esc(result.message)}</p><form id="otpResetForm"><input type="hidden" name="email" value="${esc(email)}"><label class="field">รหัส OTP 6 หลัก<input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" required></label><label class="field">รหัสผ่านใหม่<div class="password-field"><input name="password" type="password" minlength="8" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร" required><button class="password-toggle" type="button" onclick="togglePassword(this)" aria-label="แสดงรหัสผ่าน">◉</button></div></label><label class="field">ยืนยันรหัสผ่านใหม่<input name="confirmPassword" type="password" minlength="8" autocomplete="new-password" required></label><button class="button primary wide">ตั้งรหัสผ่านใหม่</button><button id="resendOtp" class="button secondary wide" type="button">ส่ง OTP ใหม่</button></form>`;
+      $('#otpResetForm').onsubmit=resetPassword;
+      $('#resendOtp').onclick=()=>forgotPassword(email,passwordFlow);
+    }catch(error){toast(error.message,true);button.disabled=false;button.textContent='ส่งรหัส OTP';}
+  }
+
+  async function resetPassword(event){
+    event.preventDefault();
+    const values=Object.fromEntries(new FormData(event.currentTarget));
+    if(values.password!==values.confirmPassword)return toast('รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน',true);
+    const button=event.currentTarget.querySelector('button[type="submit"],button:not([type])');
+    button.disabled=true;button.textContent='กำลังบันทึก...';
+    try{
+      const result=await api('/auth/reset-password',{method:'POST',body:JSON.stringify(values)});
+      modal.close();
+      if(passwordFlow==='change')logout();
+      loginForm.querySelector('[name="username"]').value=values.email;loginForm.querySelector('[name="password"]').value='';
+      toast(result.message);
+    }catch(error){toast(error.message,true);button.disabled=false;button.textContent='ตั้งรหัสผ่านใหม่';}
+  }
 
   clearLoginFields();
   setTimeout(clearLoginFields,100);

@@ -1,19 +1,48 @@
 const state={token:localStorage.getItem('token'),user:JSON.parse(localStorage.getItem('user')||'null'),equipment:[],loans:[],cart:JSON.parse(localStorage.getItem('cart')||'[]')};
+let realtimeSource=null,realtimeTimer=null;
+function stopRealtime(){if(realtimeSource){realtimeSource.close();realtimeSource=null}clearTimeout(realtimeTimer)}
+function refreshFromRealtime(type){
+  if(type==='connected'||!state.user||$('#appView').classList.contains('hidden'))return;
+  const page=location.hash.slice(1)||'dashboard';
+  const relevant={dashboard:['loans','equipment'],borrow:['loans','equipment'],return:['loans'],loans:['loans','equipment','users'],stock:['loans','equipment'],maintenance:['loans','equipment'],accounts:['loans','users']}[page]||[];
+  if(!relevant.includes(type))return;
+  clearTimeout(realtimeTimer);
+  realtimeTimer=setTimeout(()=>{
+    if(document.querySelector('#content form,dialog[open]'))return;
+    if(page==='borrow'&&document.querySelector('#content .success'))return;
+    route();
+  },250);
+}
+function startRealtime(){
+  stopRealtime();
+  realtimeSource=new EventSource('/api/events');
+  realtimeSource.onmessage=event=>{try{refreshFromRealtime(JSON.parse(event.data).type)}catch{}};
+}
 const $=s=>document.querySelector(s),esc=(v='')=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-const txt={available:'พร้อมยืม',maintenance:'ซ่อมบำรุง',retired:'เลิกใช้งาน',borrowed:'กำลังยืม',returned:'คืนแล้ว',normal:'ปกติ',damaged:'ชำรุด',lost:'สูญหาย',abnormal:'ผิดปกติ'};
+const txt={outOfStock:'หมด',available:'พร้อมยืม',maintenance:'ซ่อมบำรุง',retired:'เลิกใช้งาน',borrowed:'กำลังยืม',returned:'คืนแล้ว',normal:'ปกติ',damaged:'ชำรุด',lost:'สูญหาย',abnormal:'ผิดปกติ'};
 const date=v=>v?new Intl.DateTimeFormat('th-TH',{dateStyle:'medium'}).format(new Date(v)):'-';
 async function api(path,opt={}){const r=await fetch('/api'+path,{...opt,headers:{'Content-Type':'application/json',...(state.token?{Authorization:`Bearer ${state.token}`}:{})}});if(r.status===204)return null;const d=await r.json();if(!r.ok){if(r.status===401)logout();throw Error(d.message||'เกิดข้อผิดพลาด')}return d}
 function toast(message,error=false){const e=$('#toast');e.textContent=message;e.className='toast show'+(error?' error':'');setTimeout(()=>e.className='toast',2600)}
 function saveCart(){localStorage.setItem('cart',JSON.stringify(state.cart))}function icon(e){return /sensor|dht|เซ็นเซอร์/i.test(e.name+e.category)?'♨':/led/i.test(e.name)?'▥':'▣'}
 function equipmentArt(e){return e.imageUrl?`<img class="device-image" src="${esc(e.imageUrl)}" alt="${esc(e.name)}">`:`<span>${icon(e)}</span>`}
 function login(d){state.token=d.token;state.user=d.user;localStorage.setItem('token',d.token);localStorage.setItem('user',JSON.stringify(d.user));history.replaceState(null,'','#dashboard');showApp()}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');state.token=null;state.user=null;$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden')}
+function logout(){stopRealtime();localStorage.removeItem('token');localStorage.removeItem('user');state.token=null;state.user=null;$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden')}
 function nav(){const admin=state.user.role==='admin';const items=admin?[['dashboard','▦','ตรวจเช็ค'],['stock','▤','คลัง'],['add','⊕','เพิ่ม'],['loans','⌖','ติดตาม'],['profile','♙','บัญชี']]:[['dashboard','▦','ตรวจเช็ค'],['borrow','↝','ยืม'],['return','▣','คืน'],['loans','◴','ประวัติ'],['profile','♙','บัญชี']];$('#bottomNav').innerHTML=items.map(([p,i,t])=>`<a href="#${p}" data-p="${p}"><b>${i}</b>${t}</a>`).join('')}
-function showApp(){if(!state.user)return logout();$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');nav();route()}
+function showApp(){if(!state.user)return logout();$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');nav();startRealtime();route()}
 function active(page){document.querySelectorAll('#bottomNav a').forEach(a=>a.classList.toggle('active',a.dataset.p===page))}
-function equipmentCard(e,withAdd=false){const repairing=e.maintenanceQuantity||0,cardStatus=e.status==='retired'?'retired':repairing>0?'maintenance':'available';return `<article class="card equipment-card"><div class="device-art">${equipmentArt(e)}</div><div><span class="badge ${cardStatus}">${txt[cardStatus]}</span><h3>${esc(e.name)}</h3><div class="code">${esc(e.code)}</div><p class="meta">${esc(e.category)} · ชำรุด ${repairing} ชิ้น · ยืมได้ ${e.availableQuantity} ชิ้น</p></div>${withAdd&&e.status!=='retired'&&e.availableQuantity>0?`<div class="card-action"><button class="button primary" onclick="addCart(${e.id})">＋ เพิ่มในรายการยืม</button></div>`:''}</article>`}
+function equipmentCard(e,withAdd=false){const repairing=e.maintenanceQuantity||0,cardStatus=e.status==='retired'?'retired':repairing>0&&repairing===e.totalQuantity?'maintenance':e.availableQuantity>0?'available':'outOfStock';return `<article class="card equipment-card"><div class="device-art">${equipmentArt(e)}</div><div><span class="badge ${cardStatus}">${txt[cardStatus]}</span><h3>${esc(e.name)}</h3><div class="code">${esc(e.code)}</div><p class="meta">${esc(e.category)} · ชำรุด ${repairing} ชิ้น · ยืมได้ ${e.availableQuantity} ชิ้น</p></div>${withAdd&&e.status!=='retired'&&e.availableQuantity>0?`<div class="card-action"><button class="button primary" onclick="addCart(${e.id})">＋ เพิ่มในรายการยืม</button></div>`:''}</article>`}
 function loanCard(l,action=''){return `<article class="card loan-card"><div class="device-art">${equipmentArt({imageUrl:l.imageUrl,name:l.equipmentName,category:''})}</div><div><div class="code">${esc(l.equipmentCode)}</div><h3>${esc(l.equipmentName)}</h3><p class="meta">จำนวน ${l.quantity} ชิ้น</p></div><span class="badge ${l.status}">${txt[l.status]}</span><footer><span>วันที่ยืม<br><b>${date(l.borrowedAt)}</b></span><span>กำหนดคืน<br><b>${date(l.dueAt)}</b></span>${action}</footer></article>`}
-async function dashboard(){const [d,loans]=await Promise.all([api('/dashboard'),api('/loans?status=borrowed')]);$('#content').innerHTML=`<h1 class="page-title">ตรวจเช็ค</h1><p class="subtitle">ภาพรวมสถานะอุปกรณ์ทั้งหมดและความเคลื่อนไหวล่าสุด</p><section class="stats"><div class="stat"><strong>${d.total}</strong><span>อุปกรณ์ทั้งหมด</span></div><div class="stat green"><strong>${d.available}</strong><span>พร้อมใช้งาน</span></div><div class="stat orange"><strong>${d.activeLoans}</strong><span>ถูกยืมอยู่</span></div><div class="stat red"><strong>${d.maintenance}</strong><span>ชำรุด/รอซ่อม</span></div></section><h2 class="section-title">ความเคลื่อนไหวล่าสุด <a href="#loans">ดูทั้งหมด</a></h2>${loans.slice(0,4).map(l=>loanCard(l)).join('')||'<p class="subtitle">ยังไม่มีรายการยืม</p>'}`}
+async function dashboard(){
+  const [d,loans]=await Promise.all([api('/dashboard'),api('/loans?sort=recent')]);
+  const cards=[
+    [d.total,'อุปกรณ์ทั้งหมด',''],[d.available,'พร้อมใช้งาน','green'],
+    [d.borrowedQuantity,'ถูกยืมอยู่','orange'],[d.maintenance,'ชำรุด/รอซ่อม','red']
+  ];
+  if(d.lost>0)cards.push([d.lost,'สูญหาย','red']);
+  if(d.retired>0)cards.push([d.retired,'เลิกใช้งาน','']);
+  const activityTitle=state.user.role==='admin'?'ความเคลื่อนไหวล่าสุด':'ความเคลื่อนไหวล่าสุดของฉัน';
+  $('#content').innerHTML=`<h1 class="page-title">ตรวจเช็ค</h1><p class="subtitle">ภาพรวมสถานะอุปกรณ์ทั้งหมดและความเคลื่อนไหวล่าสุด</p><section class="stats">${cards.map(([value,label,color])=>`<div class="stat ${color}"><strong>${value}</strong><span>${label}</span></div>`).join('')}</section><p class="meta">จำนวนอุปกรณ์ทั้งระบบ (หน่วย: ชิ้น)</p><h2 class="section-title">${activityTitle} <a href="#loans">ดูทั้งหมด</a></h2>${loans.slice(0,4).map(l=>loanCard(l)+`<p class="meta">${l.repairedAt?'ซ่อมเสร็จเมื่อ':l.returnedAt?'คืนเมื่อ':'ยืมเมื่อ'} ${date(l.repairedAt||l.returnedAt||l.borrowedAt)}</p>`).join('')||'<p class="subtitle">ยังไม่มีประวัติการยืม–คืน</p>'}`;
+}
 async function borrow(){state.equipment=await api('/equipment');$('#content').innerHTML=`<h1 class="page-title">ยืมอุปกรณ์</h1><p class="subtitle">เลือกอุปกรณ์ที่พร้อมใช้งาน แล้วกรอกข้อมูลผู้ยืมเพื่อบันทึกการยืม</p><h2 class="section-title">▤ อุปกรณ์ที่พร้อมให้ยืม <span class="badge available">${state.equipment.filter(e=>e.status!=='retired'&&e.availableQuantity>0).length} รายการ</span></h2><div class="search"><input id="searchEq" placeholder="ค้นหาอุปกรณ์"></div><div id="eqList">${state.equipment.map(e=>equipmentCard(e,true)).join('')}</div>${state.cart.length?`<div class="cart-bar"><b>▣</b><span>เลือกแล้ว<br>${state.cart.length} รายการ</span><button class="button primary" onclick="renderCart()">ยืนยันการยืม →</button></div>`:''}`;$('#searchEq').oninput=e=>{$('#eqList').innerHTML=state.equipment.filter(x=>(x.name+x.code+x.category).toLowerCase().includes(e.target.value.toLowerCase())).map(x=>equipmentCard(x,true)).join('')}}
 function addCart(id){const e=state.equipment.find(x=>x.id==id),found=state.cart.find(x=>x.id==id);if(found){if(found.quantity<e.availableQuantity)found.quantity++}else state.cart.push({id:e.id,name:e.name,code:e.code,imageUrl:e.imageUrl,quantity:1,max:e.availableQuantity});saveCart();borrow();toast('เพิ่มในรายการยืมแล้ว')}
 function renderCart(){active('borrow');$('#content').innerHTML=`<h1 class="page-title">ตะกร้าอุปกรณ์</h1><p class="subtitle">ตรวจสอบจำนวนและกรอกข้อมูลการยืม</p><div class="cart-list">${state.cart.map((x,i)=>`<article class="card"><div class="device-art">${equipmentArt({imageUrl:x.imageUrl,name:x.name,category:''})}</div><div><h3>${esc(x.name)}</h3><div class="code">${esc(x.code)}</div></div><div class="counter"><button onclick="qty(${i},-1)">−</button><span>${x.quantity}</span><button onclick="qty(${i},1)">＋</button></div></article>`).join('')}</div><form id="cartForm"><label class="field">ชื่อผู้ยืม<input value="${esc(state.user.fullName)}" disabled></label><label class="field">กำหนดคืน (Return Date)<input name="dueAt" type="date" required></label><label class="field">หมายเหตุ<textarea name="remark" rows="3"></textarea></label><div class="summary"><div><span>จำนวนอุปกรณ์รวม</span><b>${state.cart.reduce((s,x)=>s+x.quantity,0)} ชิ้น</b></div><div><span>หมวดหมู่</span><b>${state.cart.length} รายการ</b></div></div><button class="button primary wide">● ยืนยันการยืม</button></form>`;$('#cartForm').onsubmit=submitCart}

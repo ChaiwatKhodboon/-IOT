@@ -3,34 +3,49 @@
   const readPreferences=()=>{
     try{return {...defaultPreferences,...JSON.parse(localStorage.getItem('preferences')||'{}')}}catch{return {...defaultPreferences}}
   };
-  const resolveTheme=value=>value==='system'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):value;
+  const resolveTheme=value=>{
+    if(value!=='system')return value;
+    return matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  };
   const englishText={
-    'ระบบยืม-คืน อุปกรณ์ IoT':'IoT Equipment Loan System','สาขาเทคโนโลยีสารสนเทศ':'Information Technology','เมนูจัดการระบบ':'SYSTEM MENU',
+    'ยืม':'Borrow','คืน':'Return','ประวัติ':'History','บัญชี':'Account',
+    'ภาพรวมอุปกรณ์':'Equipment overview','จัดการอุปกรณ์ทั้งหมด':'Manage all equipment','ตรวจสอบกำหนดคืน':'Review return deadlines','ดูแลและติดตามการซ่อม':'Track equipment repairs','ค้นหาอุปกรณ์ที่ต้องการ':'Find equipment to borrow','จัดการรายการที่ยืมไว้':'Manage borrowed equipment','ดูรายการใช้งานที่ผ่านมา':'View borrowing history','ข้อมูลส่วนตัวและตั้งค่า':'Profile and preferences',
+    'ระบบยืม-คืน อุปกรณ์ IoT':'IOT Equipment Loan System','ระบบยืม-คืน อุปกรณ์ IOT':'IOT Equipment Loan System','สาขาเทคโนโลยีสารสนเทศ':'Information Technology','เมนูจัดการระบบ':'SYSTEM MENU',
     'ตรวจเช็ค':'Dashboard','คลังอุปกรณ์':'Equipment','ติดตามการยืม':'Loan Tracking','ซ่อมบำรุง':'Maintenance','ผู้ใช้งาน':'Users','บัญชีของฉัน':'My Account','บัญชีAdmin':'Admin Account','บัญชีผู้ใช้งาน':'User Account',
     'เข้าสู่ระบบ':'Sign in','ลงชื่อเข้าใช้ระบบ':'Sign in to continue','ชื่อผู้ใช้':'Username','รหัสผ่าน':'Password','ลืมรหัสผ่าน?':'Forgot password?','สมัครสมาชิกสำหรับผู้ใช้งาน':'Create a user account','สมัครสมาชิก':'Create account','ลงทะเบียนผู้ใช้ใหม่':'New user registration','มีบัญชีอยู่แล้ว / กลับเข้าสู่ระบบ':'Already registered? Sign in',
     'ภาพรวมสถานะอุปกรณ์ทั้งหมดและความเคลื่อนไหวล่าสุด':'Overview of equipment status and recent activity','อุปกรณ์ทั้งหมด':'Total equipment','พร้อมใช้งาน':'Available','ถูกยืมอยู่':'On loan','ชำรุด/รอซ่อม':'Damaged / maintenance','ความเคลื่อนไหวล่าสุด':'Recent activity','ดูทั้งหมด':'View all',
     'คลัง':'Equipment','จัดการข้อมูลอุปกรณ์ทั้งหมด':'Manage all equipment','เพิ่ม':'Add','แก้ไข':'Edit','ลบ':'Delete','เพิ่มรูป':'Add image','เปลี่ยนรูป':'Change image','รวมอุปกรณ์':'Total','ต้องซ่อม':'Needs repair',
     'ตรวจสอบว่าใครกำลังยืมอุปกรณ์และกำหนดคืน':'Review borrowers and return deadlines','ดาวน์โหลด Excel':'Download Excel','ทั้งหมด':'All','กำลังยืม':'Borrowed','คืนแล้ว':'Returned','ผู้ยืม':'Borrower','วันที่ยืม':'Borrowed date','กำหนดคืน':'Due date','วันที่คืนจริง':'Returned date',
-    'จัดการบัญชีผู้ใช้':'User Management','แก้ไขข้อมูล':'Edit details','ดูการยืม':'View loans','ปิดบัญชี':'Disable account','เปิดบัญชี':'Enable account','ผู้ดูแลระบบ':'Administrator','นักศึกษา':'Student','ชื่อผู้ใช้':'Username','รหัสนิสิต':'Student ID','เปลี่ยนรูปโปรไฟล์':'Change profile image','เพิ่มรูปโปรไฟล์':'Add profile image','ออกจากระบบ':'Sign out',
+    'จัดการบัญชีผู้ใช้':'User Management','แก้ไขข้อมูล':'Edit details','ดูการยืม':'View loans','ปิดบัญชี':'Disable account','เปิดบัญชี':'Enable account','ผู้ดูแลระบบ':'Administrator','นักศึกษา':'Student','รหัสนิสิต':'Student ID','เปลี่ยนรูปโปรไฟล์':'Change profile image','เพิ่มรูปโปรไฟล์':'Add profile image','ออกจากระบบ':'Sign out',
     'ตั้งค่าระบบ':'Settings','ธีมหน้าจอและการใช้งาน':'Appearance and preferences','รูปแบบหน้าจอ':'Appearance','สว่าง':'Light','มืด':'Dark','ตามระบบ':'System','การใช้งาน':'Behavior','ลดการเคลื่อนไหว':'Reduce motion','ยืนยันก่อนออกจากระบบ':'Confirm before signing out','บันทึกการตั้งค่า':'Save settings',
     'บัญชีผู้ใช้':'User Account','จัดการข้อมูลส่วนตัว รูปโปรไฟล์ และการตั้งค่าบัญชี':'Manage personal information, profile image and account preferences','บัญชีใช้งานอยู่':'Account active','ชื่อ-นามสกุล':'Full name','ชื่อผู้ใช้ / อีเมล':'Username / Email','สิทธิ์การใช้งาน':'Access level','ผู้ใช้งานทั่วไป':'Standard user','ธีม ภาษา และการใช้งาน':'Theme, language and preferences','สิ้นสุดเซสชันการใช้งานบนอุปกรณ์นี้':'End the session on this device'
   };
   const originalText=new WeakMap(),originalAttributes=new WeakMap();
+  const translatedValue=(source,english)=>english?(englishText[source]||source):source;
+  const translateTextNodes=(root,english)=>{
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
+    while((node=walker.nextNode())){
+      if(!originalText.has(node))originalText.set(node,node.nodeValue);
+      const source=originalText.get(node),trimmed=source.trim();
+      node.nodeValue=englishText[trimmed]&&english?source.replace(trimmed,englishText[trimmed]):source;
+    }
+  };
+  const translateAttributes=(root,english)=>{
+    root.querySelectorAll?.('[placeholder],[title],[aria-label]').forEach(element=>{
+      if(!originalAttributes.has(element))originalAttributes.set(element,{placeholder:element.getAttribute('placeholder'),title:element.getAttribute('title'),ariaLabel:element.getAttribute('aria-label')});
+      const values=originalAttributes.get(element);
+      for(const [property,attribute] of [['placeholder','placeholder'],['title','title'],['ariaLabel','aria-label']]){
+        const source=values[property];
+        if(source!=null)element.setAttribute(attribute,translatedValue(source,english));
+      }
+    });
+  };
   const translateElement=root=>{
     const english=readPreferences().language==='en';
     document.documentElement.lang=english?'en':'th';
     document.title=english?'IoT Equipment Loan System':'ระบบยืมคืนอุปกรณ์ IoT';
-    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
-    while(node=walker.nextNode()){
-      if(!originalText.has(node))originalText.set(node,node.nodeValue);
-      const source=originalText.get(node),trimmed=source.trim();
-      node.nodeValue=english&&englishText[trimmed]?source.replace(trimmed,englishText[trimmed]):source;
-    }
-    root.querySelectorAll?.('[placeholder],[title],[aria-label]').forEach(element=>{
-      if(!originalAttributes.has(element))originalAttributes.set(element,{placeholder:element.getAttribute('placeholder'),title:element.getAttribute('title'),ariaLabel:element.getAttribute('aria-label')});
-      const values=originalAttributes.get(element);
-      for(const [property,attribute] of [['placeholder','placeholder'],['title','title'],['ariaLabel','aria-label']]){const source=values[property];if(source!=null)element.setAttribute(attribute,english?(englishText[source]||source):source)}
-    });
+    translateTextNodes(root,english);
+    translateAttributes(root,english);
   };
   window.applyLanguage=()=>translateElement(document.body);
   window.applyPreferences=function(){
@@ -66,6 +81,9 @@
     logout();
   };
   const managementIcon=name=>({
+    borrow:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7 12 3l8 4-8 4zM4 7v10l8 4 4-2M12 11v10M15 14h7m-3-3 3 3-3 3"/></svg>',
+    return:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7 12 3l8 4-8 4zM4 7v10l8 4 8-4v-4M12 11v10M22 10h-7m3-3-3 3 3 3"/></svg>',
+    history:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2"/></svg>',
     dashboard:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5V20h-5v-5H9v5H4z"/></svg>',
     stock:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5zM4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
     loans:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h12M14 4l3 3-3 3M19 17H7M10 14l-3 3 3 3"/></svg>',
@@ -76,21 +94,35 @@
   const isOverdue=loan=>loan.status==='borrowed'&&loan.dueAt&&new Date(loan.dueAt)<new Date();
   const overdueText=loan=>`เกินกำหนด ${loan.overdueDays||Math.max(1,Math.ceil((Date.now()-new Date(loan.dueAt))/86400000))} วัน`;
 
-  const baseNav=nav;
-  nav=function(){
-    if(state.user?.role!=='admin')return baseNav();
-    const items=[['dashboard','ตรวจเช็ค'],['stock','คลังอุปกรณ์'],['loans','ติดตามการยืม'],['maintenance','ซ่อมบำรุง'],['accounts','ผู้ใช้งาน'],['profile','บัญชีของฉัน']];
-    $('#bottomNav').innerHTML=items.map(([page,label])=>`<a href="#${page}" data-p="${page}" aria-label="${label}"><b>${managementIcon(page)}</b><span>${label}</span></a>`).join('');
+  window.nav=function(){
+    const admin=state.user?.role==='admin';
+    const items=admin
+      ? [['dashboard','ตรวจเช็ค','ภาพรวมอุปกรณ์'],['stock','คลังอุปกรณ์','จัดการอุปกรณ์ทั้งหมด'],['loans','ติดตามการยืม','ตรวจสอบกำหนดคืน'],['maintenance','ซ่อมบำรุง','ดูแลและติดตามการซ่อม'],['accounts','ผู้ใช้งาน','จัดการบัญชีผู้ใช้'],['profile','บัญชีของฉัน',state.user?.fullName||'ข้อมูลส่วนตัวและตั้งค่า']]
+      : [['dashboard','ตรวจเช็ค','ภาพรวมอุปกรณ์'],['borrow','ยืม','ค้นหาอุปกรณ์ที่ต้องการ'],['return','คืน','จัดการรายการที่ยืมไว้'],['loans','ประวัติ','ดูรายการใช้งานที่ผ่านมา'],['profile','บัญชี',state.user?.fullName||'ข้อมูลส่วนตัวและตั้งค่า']];
+    const navigation=$('#bottomNav');
+    navigation.classList.add('modern-nav');
+    navigation.style.setProperty('--nav-count',items.length);
+    navigation.setAttribute('aria-label','เมนูจัดการระบบ');
+    navigation.innerHTML=items.map(([page,label,description])=>`<a href="#${page}" data-p="${page}" aria-label="${label}"><b class="nav-icon">${managementIcon(!admin&&page==='loans'?'history':page)}</b><span class="nav-copy"><span class="nav-label">${label}</span><small>${esc(description)}</small></span><span class="nav-arrow" aria-hidden="true">›</span></a>`).join('');
+    window.active(location.hash.slice(1)||'dashboard');
+  };
+  const baseActive=window.active;
+  window.active=function(page){
+    baseActive(page);
+    document.querySelectorAll('#bottomNav a').forEach(link=>{
+      if(link.dataset.p===page)link.setAttribute('aria-current','page');
+      else link.removeAttribute('aria-current');
+    });
   };
 
-  const baseLoanCard=loanCard;
-  loanCard=function(loan,action=''){
+  const baseLoanCard=window.loanCard;
+  window.loanCard=function(loan,action=''){
     const html=baseLoanCard(loan,action);
     return isOverdue(loan)?html.replace('class="card loan-card"','class="card loan-card overdue-card"').replace(`<span class="badge ${loan.status}">${txt[loan.status]}</span>`,`<span class="badge overdue">${overdueText(loan)}</span>`):html;
   };
 
-  const baseDashboard=dashboard;
-  dashboard=async function(){
+  const baseDashboard=window.dashboard;
+  window.dashboard=async function(){
     await baseDashboard();
     const data=await api('/dashboard');
     if(data.overdueLoans>0){
@@ -98,18 +130,27 @@
     }
   };
 
+  const equipmentDisplayStatus=item=>{
+    if(item.status==='retired')return 'retired';
+    if((item.maintenanceQuantity||0)>0)return 'maintenance';
+    return 'available';
+  };
+
   window.renderAdminEquipment=function(items){
     if(!items.length)return '<div class="card empty-state"><b>ไม่พบอุปกรณ์</b><p>ลองเปลี่ยนคำค้นหา หรือเพิ่มอุปกรณ์รายการใหม่</p></div>';
-    return items.map(item=>`<article class="card admin-equipment-card">
+    return items.map(item=>{
+      const displayStatus=equipmentDisplayStatus(item);
+      return `<article class="card admin-equipment-card">
       <div class="device-art">${equipmentArt(item)}</div>
-      <div class="equipment-copy"><span class="badge ${item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available'}">${txt[item.status==='retired'?'retired':(item.maintenanceQuantity||0)>0?'maintenance':'available']}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">${esc(item.category)} · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
+      <div class="equipment-copy"><span class="badge ${displayStatus}">${txt[displayStatus]}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">${esc(item.category)} · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
       <div class="admin-card-tools">
         <button type="button" class="icon-edit" onclick="editAdminEquipment(${item.id})">✎ <span>แก้ไข</span></button>
         <input id="equipment-image-${item.id}" class="equipment-image-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="changeEquipmentImage(event,${item.id})">
         <label class="icon-image" for="equipment-image-${item.id}">▣ <span>${item.imageUrl?'เปลี่ยนรูป':'เพิ่มรูป'}</span></label>
         <button type="button" class="icon-delete" onclick="removeAdminEquipment(${item.id})">⌫ <span>ลบ</span></button>
       </div>
-    </article>`).join('');
+    </article>`;
+    }).join('');
   };
 
   window.editAdminEquipment=function(id){
@@ -131,18 +172,29 @@
   window.accounts=async function(){
     if(state.user?.role!=='admin')return profile();
     const users=await api('/users');
-    $('#content').innerHTML=`<div class="admin-page-head"><div><h1 class="page-title">จัดการบัญชีผู้ใช้</h1><p class="subtitle">ตรวจสอบสิทธิ์ สถานะ และรายการยืมของสมาชิก</p></div><span class="count-pill">${users.length} บัญชี</span></div><div class="search"><input id="accountSearch" placeholder="ค้นหาชื่อ ชื่อผู้ใช้ หรือรหัสนิสิต..."></div><div id="accountList" class="account-grid">${renderAccounts(users)}</div>`;
-    $('#accountSearch').oninput=event=>{const q=event.target.value.toLowerCase();$('#accountList').innerHTML=renderAccounts(users.filter(user=>`${user.fullName} ${user.username} ${user.studentId||''}`.toLowerCase().includes(q)))};
+    $('#content').innerHTML=`<div class="admin-page-head"><div><h1 class="page-title">จัดการบัญชีผู้ใช้</h1><p class="subtitle">ตรวจสอบสิทธิ์ สถานะ และรายการยืมของสมาชิก</p></div><span class="count-pill">${users.length} บัญชี</span></div><div class="search"><input id="accountSearch" placeholder="ค้นหาชื่อ ชื่อผู้ใช้ อีเมล หรือรหัสนิสิต..."></div><div id="accountList" class="account-grid">${renderAccounts(users)}</div>`;
+    $('#accountSearch').oninput=event=>{const q=event.target.value.toLowerCase();$('#accountList').innerHTML=renderAccounts(users.filter(user=>`${user.fullName} ${user.username} ${user.email||''} ${user.studentId||''}`.toLowerCase().includes(q)))};
   };
+
+  const accountAvatar=user=>{
+    if(user.avatarUrl)return `<img src="${esc(user.avatarUrl)}" alt="">`;
+    return esc((user.fullName||'?')[0]);
+  };
+  const accountStatus=user=>user.active?'available':'retired';
+  const accountStatusText=user=>user.active?'ใช้งานได้':'ปิดใช้งาน';
+  const accountRole=user=>user.role==='admin'?'ผู้ดูแลระบบ':'ผู้ใช้งาน';
+  const accountToggleClass=user=>user.active?'danger':'primary';
+  const accountToggleText=user=>user.active?'ปิดบัญชี':'เปิดบัญชี';
+  const accountCard=user=>`<article class="card account-card ${user.active?'':'inactive'}"><div class="account-avatar">${accountAvatar(user)}</div><div class="account-copy"><span class="badge ${accountStatus(user)}">${accountStatusText(user)}</span><h3>${esc(user.fullName)}</h3><div class="code">${esc(user.username)}</div><p class="meta">${esc(user.email||'ยังไม่ผูกอีเมล')} · ${esc(user.studentId||'ไม่มีรหัสนิสิต')} · ${accountRole(user)}</p><p class="account-stats">กำลังยืม ${user.activeLoans} · <strong class="${user.overdueLoans?'red-text':''}">เกินกำหนด ${user.overdueLoans}</strong></p></div><div class="account-actions"><button class="button secondary compact" onclick="showUserLoans(${user.id})">ดูการยืม</button><button class="button secondary compact" onclick="editAccount(${user.id})">แก้ไขข้อมูล</button><button class="button ${accountToggleClass(user)} compact" onclick="toggleAccount(${user.id})">${accountToggleText(user)}</button></div></article>`;
 
   window.renderAccounts=function(users){
     if(!users.length)return '<div class="card empty-state"><b>ไม่พบบัญชีผู้ใช้</b></div>';
-    return users.map(user=>`<article class="card account-card ${user.active?'':'inactive'}"><div class="account-avatar">${user.avatarUrl?`<img src="${esc(user.avatarUrl)}" alt="">`:esc((user.fullName||'?')[0])}</div><div class="account-copy"><span class="badge ${user.active?'available':'retired'}">${user.active?'ใช้งานได้':'ปิดใช้งาน'}</span><h3>${esc(user.fullName)}</h3><div class="code">${esc(user.username)}</div><p class="meta">${esc(user.studentId||'ไม่มีรหัสนิสิต')} · ${user.role==='admin'?'ผู้ดูแลระบบ':'ผู้ใช้งาน'}</p><p class="account-stats">กำลังยืม ${user.activeLoans} · <strong class="${user.overdueLoans?'red-text':''}">เกินกำหนด ${user.overdueLoans}</strong></p></div><div class="account-actions"><button class="button secondary compact" onclick="showUserLoans(${user.id})">ดูการยืม</button><button class="button secondary compact" onclick="editAccount(${user.id})">แก้ไขข้อมูล</button><button class="button ${user.active?'danger':'primary'} compact" onclick="toggleAccount(${user.id})">${user.active?'ปิดบัญชี':'เปิดบัญชี'}</button></div></article>`).join('');
+    return users.map(accountCard).join('');
   };
 
   window.editAccount=async function(id){
     const users=await api('/users');const user=users.find(value=>String(value.id)===String(id));if(!user)return;
-    $('#modalBody').innerHTML=`<h2>แก้ไขบัญชีผู้ใช้</h2><form id="accountForm"><label class="field">ชื่อ-นามสกุล<input name="fullName" value="${esc(user.fullName)}" required></label><label class="field">รหัสนิสิต<input name="studentId" value="${esc(user.studentId||'')}"></label><label class="field">สิทธิ์<select name="role"><option value="user">ผู้ใช้งาน</option><option value="admin">ผู้ดูแลระบบ</option></select></label><label class="toggle-row"><input name="active" type="checkbox" ${user.active?'checked':''}><span>อนุญาตให้เข้าสู่ระบบ</span></label><button class="button primary wide">บันทึกบัญชี</button></form>`;
+    $('#modalBody').innerHTML=`<h2>แก้ไขบัญชีผู้ใช้</h2><form id="accountForm"><label class="field">ชื่อ-นามสกุล<input name="fullName" value="${esc(user.fullName)}" required></label><label class="field">อีเมลสำหรับกู้คืนรหัสผ่าน<input name="email" type="email" value="${esc(user.email||'')}"></label><label class="field">รหัสนิสิต<input name="studentId" value="${esc(user.studentId||'')}"></label><label class="field">สิทธิ์<select name="role"><option value="user">ผู้ใช้งาน</option><option value="admin">ผู้ดูแลระบบ</option></select></label><label class="toggle-row"><input name="active" type="checkbox" ${user.active?'checked':''}><span>อนุญาตให้เข้าสู่ระบบ</span></label><button class="button primary wide">บันทึกบัญชี</button></form>`;
     $('#accountForm [name="role"]').value=user.role;
     const accountModal=document.querySelector('#modal');
     $('#accountForm').onsubmit=async event=>{event.preventDefault();const form=Object.fromEntries(new FormData(event.target));form.active=$('#accountForm [name="active"]').checked;try{await api(`/users/${id}`,{method:'PUT',body:JSON.stringify(form)});accountModal.close();toast('บันทึกบัญชีเรียบร้อยแล้ว');await accounts()}catch(error){toast(error.message,true)}};accountModal.showModal();
@@ -153,7 +205,7 @@
       const users=await api('/users');const user=users.find(value=>String(value.id)===String(id));if(!user)return;
       const action=user.active?'ปิด':'เปิด';
       if(!confirm(`ยืนยันการ${action}บัญชีของ ${user.fullName}?`))return;
-      await api(`/users/${id}`,{method:'PUT',body:JSON.stringify({fullName:user.fullName,studentId:user.studentId,role:user.role,active:!user.active})});
+      await api(`/users/${id}`,{method:'PUT',body:JSON.stringify({fullName:user.fullName,email:user.email,studentId:user.studentId,role:user.role,active:!user.active})});
       toast(`${action}บัญชีเรียบร้อยแล้ว`);await accounts();
     }catch(error){toast(error.message,true)}
   };
@@ -224,26 +276,57 @@
     return shell.innerHTML;
   };
 
-  profile=function(){
+
+  function editableProfileDetail(field,label){
+    return '<div class="profile-detail" id="profile-'+field+'"><small>'+label+'</small><div class="profile-value-row"><b>'+esc(state.user[field]||'-')+'</b><button type="button" class="profile-pencil" data-profile-field="'+field+'" aria-label="แก้ไข'+label+'" title="แก้ไข'+label+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15z"/></svg></button></div></div>';
+  }
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('[data-profile-field]');
+    if(button)editProfileField(button.dataset.profileField);
+  });
+  function editProfileField(field){
+    if(!['username','studentId'].includes(field))return;
+    const box=document.getElementById('profile-'+field);
+    const label=field==='username'?'ชื่อผู้ใช้':'รหัสนิสิต';
+    box.innerHTML='<form class="profile-inline-form"><label class="field">'+label+'<input name="'+field+'" value="'+esc(state.user[field]||'')+'" maxlength="'+(field==='username'?50:20)+'" '+(field==='username'?'minlength="4" pattern="[A-Za-z0-9._-]+" required':'')+'></label><p class="profile-edit-error" role="alert"></p><div class="profile-inline-actions"><button class="button primary compact" type="submit">บันทึก</button><button class="button secondary compact" type="button">ยกเลิก</button></div></form>';
+    const form=box.querySelector('form'),cancel=form.querySelector('[type=button]');
+    const restore=()=>{box.outerHTML=editableProfileDetail(field,label);document.querySelector('#profile-'+field+' button').focus()};
+    cancel.onclick=restore;
+    form.onkeydown=event=>{if(event.key==='Escape'&&!cancel.disabled){event.preventDefault();restore()}};
+    form.onsubmit=async event=>{
+      event.preventDefault();
+      const payload={username:state.user.username,studentId:state.user.studentId||'',[field]:form.elements[field].value.trim()};
+      form.querySelectorAll('button').forEach(button=>button.disabled=true);
+      try{
+        const user=await api('/auth/profile',{method:'PUT',body:JSON.stringify(payload)});
+        Object.assign(state.user,user);localStorage.setItem('user',JSON.stringify(state.user));restore();
+        const identity=document.querySelector('.profile-primary p');if(identity)identity.textContent=state.user.username;
+        toast('บันทึกข้อมูลเรียบร้อยแล้ว');
+      }catch(error){form.querySelector('.profile-edit-error').textContent=error.message;form.querySelectorAll('button').forEach(button=>button.disabled=false)}
+    };
+    form.querySelector('input').focus();
+  }
+
+  window.profile=function(){
     const admin=state.user.role==='admin',avatar=state.user.avatarUrl?`<img src="${esc(state.user.avatarUrl)}" alt="รูปโปรไฟล์">`:`<span>${esc((state.user.fullName||state.user.username||'?')[0])}</span>`;
     $('#content').innerHTML=`<section class="profile-page">
       <header class="profile-page-head"><div><p class="profile-overline">ACCOUNT MANAGEMENT</p><h1 class="page-title">บัญชีผู้ใช้</h1><p class="subtitle">จัดการข้อมูลส่วนตัว รูปโปรไฟล์ และการตั้งค่าบัญชี</p></div><span class="profile-status"><i></i>บัญชีใช้งานอยู่</span></header>
       <div class="profile-panel">
         <div class="profile-identity"><div class="profile-avatar-large">${avatar}</div><div class="profile-primary"><span class="profile-role">${admin?'ผู้ดูแลระบบ':'นักศึกษา'}</span><h2>${esc(state.user.fullName)}</h2><p>${esc(state.user.username)}</p></div><div class="profile-upload"><input id="profileImageInput" class="profile-image-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="changeProfileImage(event)"><label for="profileImageInput" class="button secondary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l1.5-2h5L16 7h4v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${state.user.avatarUrl?'เปลี่ยนรูปโปรไฟล์':'เพิ่มรูปโปรไฟล์'}</label></div></div>
         <div class="profile-divider"></div>
-        <div class="profile-details"><div class="profile-detail"><small>ชื่อ-นามสกุล</small><b>${esc(state.user.fullName)}</b></div><div class="profile-detail"><small>ชื่อผู้ใช้ / อีเมล</small><b>${esc(state.user.username)}</b></div><div class="profile-detail"><small>รหัสนิสิต</small><b>${esc(state.user.studentId||'-')}</b></div><div class="profile-detail"><small>สิทธิ์การใช้งาน</small><b>${admin?'ผู้ดูแลระบบ':'ผู้ใช้งานทั่วไป'}</b></div></div>
+        <div class="profile-details"><div class="profile-detail"><small>ชื่อ-นามสกุล</small><b>${esc(state.user.fullName)}</b></div>${editableProfileDetail("username","ชื่อผู้ใช้")}<div class="profile-detail"><small>อีเมล</small><b>${esc(state.user.email||'ยังไม่ผูกอีเมล')}</b></div>${editableProfileDetail("studentId","รหัสนิสิต")}<div class="profile-detail"><small>สิทธิ์การใช้งาน</small><b>${admin?'ผู้ดูแลระบบ':'ผู้ใช้งานทั่วไป'}</b></div></div>
       </div>
-      <div class="profile-actions"><button class="profile-action-card" type="button" onclick="openSettings()"><span class="profile-action-icon">⚙</span><span><b>ตั้งค่าระบบ</b><small>ธีม ภาษา และการใช้งาน</small></span><span class="profile-action-arrow">›</span></button><button class="profile-action-card danger" type="button" onclick="requestLogout()"><span class="profile-action-icon">⇥</span><span><b>ออกจากระบบ</b><small>สิ้นสุดเซสชันการใช้งานบนอุปกรณ์นี้</small></span><span class="profile-action-arrow">›</span></button></div>
+      <div class="profile-actions"><button class="profile-action-card" type="button" onclick="forgotPassword(state.user.email||'','change')"><span class="profile-action-icon">⚿</span><span><b>เปลี่ยนรหัสผ่าน</b><small>ยืนยันตัวตนด้วย OTP ทางอีเมล</small></span><span class="profile-action-arrow">›</span></button><button class="profile-action-card" type="button" onclick="openSettings()"><span class="profile-action-icon">⚙</span><span><b>ตั้งค่าระบบ</b><small>ธีม ภาษา และการใช้งาน</small></span><span class="profile-action-arrow">›</span></button><button class="profile-action-card danger" type="button" onclick="requestLogout()"><span class="profile-action-icon">⇥</span><span><b>ออกจากระบบ</b><small>สิ้นสุดเซสชันการใช้งานบนอุปกรณ์นี้</small></span><span class="profile-action-arrow">›</span></button></div>
     </section>`;
     applyLanguage();
   };
 
-  const baseRoute=route;
-  route=async function(){
+  const baseRoute=window.route;
+  window.route=async function(){
     const contentScroller=document.querySelector('main');
     if(contentScroller)contentScroller.scrollTo({top:0,left:0,behavior:'auto'});
     if(location.hash==='#accounts'){
-      active('accounts');
+      window.active('accounts');
       try{await accounts()}catch(error){toast(error.message,true)}
       return;
     }

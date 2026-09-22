@@ -12,8 +12,8 @@
   <link rel="apple-touch-icon" href="/icons/IT.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=borrower-avatar-v1">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=login-brand-v4">
 </head>
 <body>
   <div id="toast" class="toast" role="status"></div>
@@ -28,6 +28,19 @@
         <label>รหัสผ่าน<div class="password-field"><input name="password" type="password" autocomplete="new-password" placeholder="••••••••" required><button class="password-toggle" type="button" onclick="togglePassword(this)" aria-label="แสดงรหัสผ่าน" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.8"/></svg></button></div></label>
         <div class="forgot-row"><button type="button" onclick="forgotPassword()">ลืมรหัสผ่าน?</button></div>
         <button class="button primary wide">เข้าสู่ระบบ</button>
+        <div id="googleSignIn" class="google-sign-in">
+          <div class="auth-divider"><span>หรือ</span></div>
+          <div id="googleButton" class="google-button"><button class="button secondary wide" type="button" disabled>เข้าสู่ระบบด้วย Google</button></div>
+          <p id="googleStatus" class="google-status" role="status" aria-live="polite">กำลังตรวจสอบการเชื่อมต่อ Google…</p>
+          <p class="google-note">ครั้งแรกที่เข้าใช้ ระบบจะสร้างบัญชีผู้ใช้งานให้คุณ</p>
+        </div>
+      </form>
+      <form id="googleLinkForm" class="auth-card google-link-form hidden">
+        <h2>เชื่อมต่อบัญชีเดิม</h2>
+        <p class="form-hint">ใช้อีเมลเดียวกับบัญชีเดิม กรุณายืนยันรหัสผ่านของระบบยืมคืนเพื่อเก็บประวัติการใช้งานไว้ด้วยกัน</p>
+        <label>รหัสผ่านของระบบยืมคืน<input name="password" type="password" autocomplete="current-password" required maxlength="1024"></label>
+        <button class="button primary wide" type="submit">ยืนยันและเข้าสู่ระบบ</button>
+        <button id="googleLinkCancel" class="button secondary wide" type="button">ยกเลิก</button>
       </form>
       <button id="showSignup" class="auth-link" type="button">สมัครสมาชิกสำหรับผู้ใช้งาน</button>
     </div>
@@ -41,6 +54,7 @@
         <h2>ลงทะเบียนผู้ใช้ใหม่</h2><p class="form-hint">สำหรับผู้ใช้ที่ยังไม่มีบัญชีเข้าใช้งาน</p>
         <label>ชื่อ-นามสกุล<input name="fullName" autocomplete="name" placeholder="กรอกชื่อ-นามสกุล" required></label>
         <label>ชื่อผู้ใช้หรืออีเมล<input name="username" autocomplete="username" placeholder="เช่น somchai.k@ku.th" required></label>
+        <label>อีเมลสำหรับกู้คืนรหัสผ่าน<input name="email" type="email" autocomplete="email" placeholder="เช่น somchai.k@ku.th" required></label>
         <label>รหัสนิสิต<input name="studentId" inputmode="numeric" placeholder="กรอกรหัสนิสิต (ถ้ามี)"></label>
         <label>ตั้งรหัสผ่าน<div class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร" required><button class="password-toggle" type="button" onclick="togglePassword(this)" aria-label="แสดงรหัสผ่าน" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.8"/></svg></button></div></label>
         <label>ยืนยันรหัสผ่าน<div class="password-field"><input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="กรอกรหัสผ่านอีกครั้ง" required><button class="password-toggle" type="button" onclick="togglePassword(this)" aria-label="แสดงรหัสผ่าน" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.8"/></svg></button></div></label>
@@ -50,10 +64,13 @@
     </div>
   </section>
   <div id="appView" class="app hidden">
-    <header class="app-header"><img src="/icons/IT.jpg" alt=""><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong><button id="installBtn" class="install hidden">ติดตั้ง</button></header>
+    <header class="app-header modern-header">
+      <div class="header-brand"><span class="header-logo"><img src="/icons/IT.jpg" alt=""></span><div class="header-title"><strong>ระบบยืม-คืน อุปกรณ์ IOT</strong><span class="header-eyebrow">IOT EQUIPMENT MANAGEMENT</span></div></div>
+      <div class="header-actions"><div class="header-department"><span class="department-name">สาขาเทคโนโลยีสารสนเทศ</span><span class="department-caption">INFORMATION TECHNOLOGY</span></div><button id="installBtn" class="install hidden">ติดตั้ง</button></div>
+    </header>
     <main id="content"></main><nav id="bottomNav" class="bottom-nav"></nav>
   </div>
   <dialog id="modal"><div class="modal-sheet"><button class="close" onclick="modal.close()">×</button><div id="modalBody"></div></div></dialog>
-  <script src="/bootstrap.js?v=borrower-avatar-v1"></script>
+  <script src="/bootstrap.js?v=otp-v1"></script>
 </body>
 </html>
