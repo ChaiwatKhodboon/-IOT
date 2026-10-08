@@ -1,0 +1,26 @@
+@startuml
+skinparam defaultFontName Tahoma
+state "กำลังยืม\nstatus=borrowed\npending_return=null" as Borrowed
+state "กำลังยืมและรอตรวจรับ\nstatus=borrowed\npending_return มีค่า" as Pending
+state "คืนครบ\nstatus=returned" as Returned
+[*] --> Borrowed : ยืมสำเร็จ / ลด available
+Borrowed --> Pending : User ส่งคำขอคืนที่ถูกต้อง
+Pending --> Borrowed : Admin ส่งกลับแก้ไข / เก็บเหตุผล
+Pending --> Borrowed : Admin ตรวจรับบางส่วน / ลด quantity\nสร้างส่วนคืนและล้าง pending
+Pending --> Returned : Admin ตรวจรับครบ / บันทึกส่วนคืน
+Borrowed --> Borrowed : Admin ตรวจรับตรงบางส่วน\nลด quantity และสร้างส่วนคืน
+Borrowed --> Returned : Admin ตรวจรับตรงครบ
+Borrowed --> Borrowed : Admin แก้กำหนดคืน/หมายเหตุ
+Pending --> Pending : Admin แก้กำหนดคืน/หมายเหตุ
+Returned --> [*]
+note right of Pending
+  ยังค้างคืนและอาจเกินกำหนด
+  ส่งคำขอแล้วไม่เพิ่มสต็อก
+  คำขอผิด/เก่าไม่ทำให้เปลี่ยนสถานะ
+end note
+note left of Borrowed
+  overdue เป็นเงื่อนไขจาก due_at
+  ไม่ใช่ enum หรือสถานะแยก
+  return_rejection เป็นข้อมูลประกอบ
+end note
+@enduml

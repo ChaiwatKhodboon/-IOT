@@ -1556,7 +1556,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(width: 8),
-              status('${x['status']}'),
+              status(x['pendingReturn'] != null ? 'pending_return' : '${x['status']}'),
             ],
           ),
           if (showBorrower)
@@ -1601,12 +1601,14 @@ class _HomePageState extends State<HomePage> {
               'วันที่คืนจริง ${fmt(x['returnedAt'])}',
               style: const TextStyle(fontSize: 10, color: green),
             ),
-          if (canReturn)
+          if (x['returnRejection'] != null) Text('ส่งกลับให้แก้ไข: ${x['returnRejection']}'),
+          if (x['pendingReturn'] != null) Text('รอตรวจรับ ${x['pendingReturn']['quantity']} ชิ้น สต็อกยังไม่เปลี่ยน'),
+          if ((canReturn && x['pendingReturn'] == null) || (admin && x['pendingReturn'] != null))
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => returnItem(x),
-                child: const Text('คืนอุปกรณ์'),
+                child: Text(admin ? 'ตรวจรับคืน' : 'ส่งคำขอคืน'),
               ),
             ),
         ],
@@ -2706,6 +2708,7 @@ class _HomePageState extends State<HomePage> {
         'retired': 'เลิกใช้งาน',
         'borrowed': 'กำลังยืม',
         'returned': 'คืนแล้ว',
+        'pending_return': 'รอตรวจรับ',
         'normal': 'ปกติ',
         'damaged': 'ชำรุด',
         'lost': 'สูญหาย',
@@ -2938,78 +2941,97 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> returnItem(dynamic x) async {
-    String condition = 'normal';
-    final remark = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    Future<void> returnItem(dynamic x) async {
+    final pending = x['pendingReturn'];
+    if (pending != null && !admin) return;
+    final quantities = <String, TextEditingController>{
+      for (final key in ['normal', 'damaged', 'abnormal', 'lost'])
+        key: TextEditingController(text: '${pending?['quantities']?[key] ?? (key == 'normal' ? 1 : 0)}')
+    };
+    final returnTotal = TextEditingController(text: '${pending?['quantity'] ?? 1}');
+    final remark = TextEditingController(text: '${pending?['remark'] ?? ''}');
+    final reason = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final decision = await showDialog<String>(
       context: context,
-      builder:
-          (dialogContext) => StatefulBuilder(
-            builder:
-                (context, setDialogState) => AlertDialog(
-                  title: const Text('คืนอุปกรณ์'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${x['equipmentName']} · ${x['quantity']} ชิ้น',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text('สภาพอุปกรณ์เมื่อคืน'),
-                        for (final value in [
-                          'normal',
-                          'damaged',
-                          'abnormal',
-                          'lost',
-                        ])
-                          RadioListTile<String>(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            value: value,
-                            groupValue: condition,
-                            title: Text(label(value)),
-                            onChanged:
-                                (v) => setDialogState(() => condition = v!),
-                          ),
-                        TextField(
-                          controller: remark,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'หมายเหตุ/รายละเอียดเพิ่มเติม',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(dialogContext, false),
-                      child: const Text('ยกเลิก'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(dialogContext, true),
-                      child: const Text('ยืนยันการคืน'),
-                    ),
-                  ],
-                ),
-          ),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(admin ? 'ตรวจรับคืน' : 'ส่งคำขอคืน'),
+        content: SingleChildScrollView(child: Form(key: formKey, child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${x['equipmentName']} · ค้างคืน ${x['quantity']} ชิ้น'),
+            const Text('สต็อกจะเพิ่มหลังเจ้าหน้าที่ตรวจรับเท่านั้น'),
+            TextFormField(
+              controller: returnTotal,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(labelText: 'จำนวนคืนครั้งนี้ (สูงสุด ${x['quantity']} ชิ้น)'),
+              onChanged: (value) {
+                quantities['normal']!.text = value;
+                for (final key in ['damaged', 'abnormal', 'lost']) {
+                  quantities[key]!.text = '0';
+                }
+              },
+              validator: (value) {
+                final n = int.tryParse(value ?? '');
+                if (n == null || n < 1 || n > (x['quantity'] as num)) {
+                  return 'เลือกจำนวนตั้งแต่ 1 ถึง ${x['quantity']}';
+                }
+                return null;
+              },
+            ),
+            const Text('แยกจำนวนตามสภาพให้รวมเท่ากับจำนวนคืน'),
+            for (final entry in quantities.entries)
+              TextFormField(controller: entry.value, keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: label(entry.key)),
+                validator: (value) {
+                  final n = int.tryParse(value ?? '');
+                  if (n == null || n < 0) return 'ระบุจำนวนเต็มตั้งแต่ 0 ขึ้นไป';
+                  final total = quantities.values.fold<int>(0, (sum, c) => sum + (int.tryParse(c.text) ?? 0));
+                  if (total != int.tryParse(returnTotal.text)) return 'จำนวนแยกตามสภาพต้องเท่ากับจำนวนคืน';
+                  return null;
+                }),
+            TextField(controller: remark, maxLength: 500, decoration: const InputDecoration(labelText: 'หมายเหตุ')),
+            if (admin && pending != null)
+              TextField(controller: reason, maxLength: 500, decoration: const InputDecoration(labelText: 'เหตุผลที่ส่งกลับ')),
+          ],
+        ))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('ยกเลิก')),
+          if (admin && pending != null)
+            TextButton(onPressed: () {
+              if (reason.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('กรุณาระบุเหตุผลที่ส่งกลับ')));
+                return;
+              }
+              Navigator.pop(dialogContext, 'reject');
+            }, child: const Text('ส่งกลับให้แก้ไข')),
+          FilledButton(onPressed: () {
+            if (formKey.currentState!.validate()) Navigator.pop(dialogContext, 'accept');
+          }, child: Text(admin ? 'ยืนยันตรวจรับและปรับสต็อก' : 'ส่งคำขอคืน')),
+        ],
+      ),
     );
-    if (confirmed != true) return;
     try {
-      await widget.api.call(
-        '/loans/${x['id']}/return',
-        method: 'POST',
-        body: {'condition': condition, 'remark': remark.text.trim()},
+      if (decision == null) return;
+      final result = await widget.api.call(
+        '/loans/${x['id']}/return${decision == 'reject' ? '/reject' : ''}', method: 'POST',
+        body: decision == 'reject' ? {'inspectionId': pending['id'], 'reason': reason.text.trim()} : {
+          'quantities': {for (final entry in quantities.entries) entry.key: int.parse(entry.value.text)},
+          'remark': remark.text.trim(),
+          'inspectionId': admin && pending != null ? pending['id'] : null,
+        },
       );
-      load();
-    } catch (e) {
-      error(e);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${result['message']}')));
+      await load();
+    } catch (e) { error(e); }
+    finally {
+      for (final controller in quantities.values) { controller.dispose(); }
+      returnTotal.dispose();
+      remark.dispose(); reason.dispose();
     }
   }
-
-  Future<void> editEquipment(dynamic item) async {
+Future<void> editEquipment(dynamic item) async {
     final name = TextEditingController(text: '${item['name'] ?? ''}');
     final code = TextEditingController(text: '${item['code'] ?? ''}');
     final category = TextEditingController(text: '${item['category'] ?? ''}');

@@ -14,6 +14,7 @@ app.use('/api/equipment', equipment);
 app.use('/api/loans', loans);
 app.use('/api/dashboard', dashboard);
 app.use('/api/users', users);
+app.use('/api/audit', require('./routes/audit'));
 app.get('/api/events', realtime.events);
 app.get('/api/health', (_req,res) => res.json({ status:'ok' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));

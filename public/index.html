@@ -13,17 +13,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=login-brand-v4">
+  <link rel="stylesheet" href="/styles.css?v=login-layout-v3">
 </head>
 <body>
   <div id="toast" class="toast" role="status"></div>
   <section id="loginView" class="auth-screen">
     <div class="auth-top"><p>สาขาเทคโนโลยีสารสนเทศ</p><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong></div>
     <div class="auth-content">
+      <div class="auth-language-bar"><div class="auth-language-switch" role="group" aria-label="เปลี่ยนภาษา">
+        <button type="button" lang="th" translate="no" data-language="th" aria-pressed="true" onclick="I18n.setLanguage('th')">ไทย</button>
+        <button type="button" lang="en" translate="no" data-language="en" aria-pressed="false" onclick="I18n.setLanguage('en')">EN</button>
+      </div></div>
       <img class="auth-logo" src="/icons/IT.jpg" alt="IoT Loan">
       <h1>เข้าสู่ระบบ</h1>
       <form id="loginForm" class="auth-card" autocomplete="off">
-        <p class="overline">STAFF SIGN IN</p><h2>ลงชื่อเข้าใช้ระบบ</h2>
+        <h2>ลงชื่อเข้าใช้ระบบ</h2>
         <label>ชื่อผู้ใช้<input name="username" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="กรอกชื่อผู้ใช้" required></label>
         <label>รหัสผ่าน<div class="password-field"><input name="password" type="password" autocomplete="new-password" placeholder="••••••••" required><button class="password-toggle" type="button" onclick="togglePassword(this)" aria-label="แสดงรหัสผ่าน" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.8"/></svg></button></div></label>
         <div class="forgot-row"><button type="button" onclick="forgotPassword()">ลืมรหัสผ่าน?</button></div>
@@ -48,6 +52,10 @@
   <section id="signupView" class="auth-screen hidden">
     <div class="auth-top"><p>สาขาเทคโนโลยีสารสนเทศ</p><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong></div>
     <div class="auth-content">
+      <div class="auth-language-bar"><div class="auth-language-switch" role="group" aria-label="เปลี่ยนภาษา">
+        <button type="button" lang="th" translate="no" data-language="th" aria-pressed="true" onclick="I18n.setLanguage('th')">ไทย</button>
+        <button type="button" lang="en" translate="no" data-language="en" aria-pressed="false" onclick="I18n.setLanguage('en')">EN</button>
+      </div></div>
       <img class="auth-logo" src="/icons/IT.jpg" alt="IoT Loan">
       <h1>สมัครสมาชิก</h1>
       <form id="signupForm" class="auth-card">
@@ -71,6 +79,8 @@
     <main id="content"></main><nav id="bottomNav" class="bottom-nav"></nav>
   </div>
   <dialog id="modal"><div class="modal-sheet"><button class="close" onclick="modal.close()">×</button><div id="modalBody"></div></div></dialog>
+  <script src="/notifications.js?v=1"></script>
+  <script src="/language.js?v=3"></script>
   <script src="/bootstrap.js?v=otp-v1"></script>
 </body>
 </html>

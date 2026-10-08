@@ -1,0 +1,41 @@
+@startuml
+left to right direction
+skinparam defaultFontName Tahoma
+skinparam linetype ortho
+actor "ผู้เยี่ยมชม" as Guest
+actor "สมาชิกที่เข้าสู่ระบบ" as Member
+actor "ผู้ใช้ (User)" as User
+actor "Google Identity" as Google
+actor "บริการอีเมล" as Mail
+User --|> Member
+rectangle "ระบบยืม–คืนอุปกรณ์ IoT : ผู้ใช้ทั่วไป" {
+  usecase "UC01 สมัครสมาชิก" as U01
+  usecase "UC02 เข้าสู่ระบบด้วยรหัสผ่าน" as U02
+  usecase "UC03 เข้าสู่ระบบด้วย Google" as U03
+  usecase "UC04 รีเซ็ตรหัสผ่านด้วย OTP" as U04
+  usecase "UC05 จัดการโปรไฟล์" as U05
+  usecase "UC06 ค้นหา/ดูอุปกรณ์" as U06
+  usecase "UC07 ยืมอุปกรณ์" as U07
+  usecase "UC08 ส่งคำขอคืน" as U08
+  usecase "UC09 ดูประวัติ/ติดตาม" as U09
+  usecase "UC10 ดู Dashboard" as U10
+  usecase "UC21 ออกจากระบบ" as U21
+  usecase "UC22 เชื่อมบัญชี Google เดิม" as U22
+}
+Guest -- U01
+Guest -- U02
+Guest -- U03
+Guest -- U04
+Guest -- U22
+Google -- U03
+Google -- U22
+Mail -- U04
+Member -- U05
+Member -- U06
+Member -- U07
+Member -- U09
+Member -- U10
+Member -- U21
+User -- U08
+U22 ..> U03 : <<extend>>
+@enduml

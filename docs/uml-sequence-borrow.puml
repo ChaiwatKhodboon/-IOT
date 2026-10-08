@@ -1,0 +1,42 @@
+@startuml
+skinparam defaultFontName Tahoma
+actor "สมาชิก" as U
+boundary "เว็บ / Flutter" as UI
+control "Auth middleware" as Auth
+control "Loans API" as API
+database "PostgreSQL + Audit trigger" as DB
+control "Realtime SSE" as RT
+U -> UI : เลือกอุปกรณ์และยืนยันจำนวน
+UI -> Auth : POST /api/loans + Bearer JWT
+alt JWT ไม่ผ่าน
+  Auth --> UI : 401
+else JWT ผ่าน
+  Auth -> API : req.user + input
+  API -> API : ตรวจ equipmentId / quantity
+  alt input ไม่ถูกต้อง
+    API --> UI : 400
+  else input ผ่าน
+    API -> DB : BEGIN + set actor
+    API -> DB : SELECT equipment FOR UPDATE
+    DB --> API : อุปกรณ์และยอดพร้อมยืมล่าสุด
+    alt ไม่พบของพร้อมยืม / จำนวนไม่พอ
+      API -> DB : ROLLBACK
+      API --> UI : 404 / 409
+    else ยืมได้
+      API -> DB : UPDATE available_quantity
+      API -> DB : INSERT loans(status=borrowed)
+      note right of DB : Trigger เขียน Audit ใน transaction เดียวกัน
+      alt DB หรือ Audit ล้มเหลว
+        DB --> API : error
+        API -> DB : ROLLBACK
+        API --> UI : error response
+      else สำเร็จ
+        API -> DB : COMMIT
+        API -> RT : broadcast(loans)
+        API --> UI : 201 + loan
+        UI --> U : แสดงยืมสำเร็จ
+      end
+    end
+  end
+end
+@enduml

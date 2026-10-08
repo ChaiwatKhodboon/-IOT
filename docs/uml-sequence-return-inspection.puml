@@ -1,0 +1,63 @@
+@startuml
+skinparam defaultFontName Tahoma
+actor "User" as U
+actor "Admin" as A
+boundary "Client" as UI
+control "Loans API + Auth" as API
+database "PostgreSQL + Audit trigger" as DB
+U -> UI : แจ้งคืนแยก normal/damaged/lost/abnormal
+UI -> API : POST /loans/:id/return + JWT + requestId
+API -> DB : BEGIN + actor; ตรวจ requestId ถ้ามี
+alt คำขอเดิม actor/loan/payload ตรงกัน
+  DB --> API : ผลลัพธ์เดิม
+  API -> DB : COMMIT
+  API --> UI : ส่งผลลัพธ์เดิม
+else คำขอใหม่
+  API -> DB : SELECT own borrowed loan FOR UPDATE
+  API -> API : ตรวจไม่มี pending และผลรวมจำนวน <= ค้างคืน
+  alt สิทธิ์/จำนวน/คำขอไม่ผ่าน
+    API -> DB : ROLLBACK
+    API --> UI : 400 / 404 / 409
+  else ผ่าน
+    API -> DB : UPDATE pending_return; ล้าง return_rejection
+    API -> DB : เก็บผล requestId ถ้ามี + COMMIT
+    API --> UI : 202 pending_return
+    UI --> U : รอตรวจรับ
+    note right of DB : status ยัง borrowed\nสต็อกและยอดค้างไม่เปลี่ยน
+  end
+end
+A -> UI : เปิดรายการรอตรวจรับ
+UI -> API : GET /loans?status=pending_return
+API -> DB : อ่านรายการตามสิทธิ์ Admin
+DB --> API : pendingReturn และ inspectionId
+API --> UI : รายการ
+alt ส่งกลับแก้ไข
+  A -> UI : ระบุเหตุผลและยืนยัน
+  UI -> API : POST /loans/:id/return/reject
+  API -> DB : BEGIN; ล็อก loan; ตรวจ inspectionId
+  API -> DB : ล้าง pending + บันทึก return_rejection
+  API -> DB : COMMIT
+  API --> UI : สำเร็จ; สต็อกเดิม
+else ตรวจรับจริง
+  A -> UI : ตรวจของและปรับจำนวน/สภาพ
+  UI -> API : POST /loans/:id/return + inspectionId
+  API -> DB : BEGIN + actor; ล็อก borrowed loan
+  API -> API : ตรวจ inspectionId และจำนวน
+  alt คำขอเก่า / จำนวนผิด
+    API -> DB : ROLLBACK
+    API --> UI : 409 / 400
+  else ตรวจผ่าน
+    API -> DB : ล็อก equipment; ล้าง pending
+    API -> DB : ปรับ borrowed คงเหลือ หรือเปลี่ยนต้นทางเป็น returned
+    loop ส่วนคืนแต่ละสภาพ
+      API -> DB : บันทึกส่วนคืนและ returned_by
+    end
+    API -> DB : normal เพิ่ม available; damaged/abnormal เพิ่ม maintenance
+    note right of DB : lost ไม่เพิ่มยอดคลัง\nTrigger เก็บ Audit
+    API -> DB : เก็บผล requestId ถ้ามี; COMMIT
+    API --> UI : 200 returnedQuantity + remainingQuantity
+    UI --> A : แสดงตรวจรับสำเร็จ
+  end
+end
+note over API,DB : ทุก transaction ที่เกิด error ต้อง ROLLBACK\nหลัง commit ของการเปลี่ยนรายการ API broadcast(loans)
+@enduml

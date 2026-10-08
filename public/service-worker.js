@@ -1,5 +1,5 @@
-const CACHE='iot-loan-v46-dashboard-counts';
-const ASSETS=['/','/index.html','/styles.css','/bootstrap.js','/app.js','/auth-pages.js','/google-login.js','/admin-ui.js','/management-ui.js','/manifest.webmanifest','/icons/IT.jpg'];
+const CACHE='iot-loan-v60-pending-return-card';
+const ASSETS=['/','/index.html','/styles.css','/bootstrap.js','/notifications.js','/language.js','/app.js','/auth-pages.js','/google-login.js','/admin-ui.js','/management-ui.js','/returns-audit.js','/manifest.webmanifest','/icons/IT.jpg'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));

@@ -3,6 +3,7 @@ const pool = require('../db');
 const { authenticate, adminOnly } = require('../middleware/auth');
 const { cleanText } = require('../utils/validation');
 const { broadcast } = require('../realtime');
+const {auditedQuery}=require('../utils/audit');
 const router = express.Router();
 
 router.use(authenticate, adminOnly);
@@ -34,7 +35,7 @@ router.put('/:id', async (req, res, next) => {
     const email = cleanText(req.body.email, 254).toLowerCase() || null;
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'รูปแบบอีเมลไม่ถูกต้อง' });
     if (!fullName) return res.status(400).json({ message: 'กรุณาระบุชื่อผู้ใช้' });
-    const { rows } = await pool.query(
+    const { rows } = await auditedQuery(req.user.id,
       'UPDATE users SET full_name=$1,student_id=$2,email=$3,role=$4,active=$5 WHERE id=$6 RETURNING id,username,email,full_name AS "fullName",student_id AS "studentId",role,active',
       [fullName, cleanText(req.body.studentId, 20) || null, email, role, active, req.params.id]
     );

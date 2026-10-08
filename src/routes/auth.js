@@ -8,6 +8,7 @@ const { sendPasswordResetOtp } = require('../mailer');
 const { cleanText } = require('../utils/validation');
 const { authenticate } = require('../middleware/auth');
 const { broadcast } = require('../realtime');
+const {auditedQuery}=require('../utils/audit');
 const router = express.Router();
 const { createGoogleAuthRouter } = require('./google-auth');
 const { googleClientId, isProduction } = require('../config');
@@ -154,7 +155,7 @@ router.put('/avatar', authenticate, async (req, res, next) => {
     if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatarUrl) || avatarUrl.length > 2800000) {
       return res.status(400).json({ message: 'รูปโปรไฟล์ต้องเป็น JPG, PNG หรือ WebP และมีขนาดไม่เกิน 2 MB' });
     }
-    const { rows } = await pool.query(
+    const { rows } = await auditedQuery(req.user.id,
       'UPDATE users SET avatar_data=$1 WHERE id=$2 AND active=TRUE RETURNING avatar_data AS "avatarUrl"',
       [avatarUrl, req.user.id]
     );
@@ -167,7 +168,7 @@ router.put('/profile', authenticate, async (req, res, next) => {
     const username = cleanText(req.body.username, 50).toLowerCase();
     const studentId = cleanText(req.body.studentId, 20) || null;
     if (!/^[a-z0-9._-]{4,50}$/i.test(username)) return res.status(400).json({ message: 'ชื่อผู้ใช้ต้องมี 4-50 ตัวอักษร และใช้ได้เฉพาะ a-z, 0-9, จุด, ขีดกลาง หรือขีดล่าง' });
-    const { rows } = await pool.query(
+    const { rows } = await auditedQuery(req.user.id,
       'UPDATE users SET username=$1,student_id=$2 WHERE id=$3 AND active=TRUE RETURNING id,username,email,full_name AS "fullName",student_id AS "studentId",avatar_data AS "avatarUrl",role',
       [username, studentId, req.user.id]
     );

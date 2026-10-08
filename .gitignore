@@ -19,3 +19,4 @@ mobile_flutter/*.iml
 
 # Local backup files
 *.bak
+tmp/

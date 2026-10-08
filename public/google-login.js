@@ -10,7 +10,7 @@
     if (sdkPromise) return sdkPromise;
     sdkPromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client?hl=th';
+      script.src = 'https://accounts.google.com/gsi/client?hl=' + I18n.language();
       script.async = true;
       const timer = setTimeout(() => reject(new Error('โหลด Google ไม่สำเร็จ กรุณารีเฟรชหน้าเว็บแล้วลองใหม่')), 15000);
       script.onload = () => { clearTimeout(timer); resolve(); };
@@ -73,7 +73,7 @@
       target.replaceChildren();
       const width = Math.max(200, Math.min(400, Math.floor(area.getBoundingClientRect().width)));
       // Medium buttons omit the previous Google account's name and photo.
-      google.accounts.id.renderButton(target, { type: 'standard', theme: 'outline', size: 'medium', text: 'signin_with', shape: 'rectangular', width, locale: 'th' });
+      google.accounts.id.renderButton(target, { type: 'standard', theme: 'outline', size: 'medium', text: 'signin_with', shape: 'rectangular', width, locale: I18n.language() });
       if (clearMessage) status.textContent = '';
     } catch (error) { status.textContent = error.message; }
   }
@@ -92,5 +92,11 @@
     if (hidden && !next) { pendingCredential = ''; linkForm.reset(); linkForm.classList.add('hidden'); prepare(); }
     hidden = next;
   }).observe(view, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('languagechange', () => {
+    if (!window.google?.accounts?.id) return;
+    target.replaceChildren();
+    const width = Math.max(200, Math.min(400, Math.floor(area.getBoundingClientRect().width)));
+    google.accounts.id.renderButton(target, { type: 'standard', theme: 'outline', size: 'medium', text: 'signin_with', shape: 'rectangular', width, locale: I18n.language() });
+  });
   prepare();
 })();

@@ -1,0 +1,29 @@
+@startuml
+skinparam defaultFontName Tahoma
+actor "ผู้ยืม" as User
+actor "ผู้ดูแล" as Admin
+participant "ระบบยืม–คืนอุปกรณ์ IoT" as System
+User -> System : ส่งคำขอคืน(loanId, จำนวนแยกสภาพ, หมายเหตุ)
+alt เจ้าของรายการและจำนวนถูกต้อง
+  System --> User : รอตรวจรับ(inspectionId, ยอดค้างเดิม)
+  Admin -> System : เรียกรายการรอตรวจรับ()
+  System --> Admin : ข้อมูลคำขอและยอดค้าง
+  alt ตรวจรับ
+    Admin -> System : ยืนยันตรวจรับ(loanId, inspectionId, จำนวนที่รับจริง)
+    alt คำขอปัจจุบันและจำนวนถูกต้อง
+      System --> Admin : ผลตรวจรับ(จำนวนที่รับ, จำนวนค้าง)
+      User -> System : ดูประวัติ()
+      System --> User : จำนวนค้างและส่วนคืนที่ตรวจรับแล้ว
+    else คำขอเปลี่ยนหรือจำนวนผิด
+      System --> Admin : แจ้งข้อผิดพลาดและให้เปิดรายการใหม่
+    end
+  else ส่งกลับแก้ไข
+    Admin -> System : ส่งกลับคำขอ(inspectionId, เหตุผล)
+    System --> Admin : ยืนยันการส่งกลับ
+    User -> System : ดูประวัติ()
+    System --> User : แสดงเหตุผลให้ส่งคำขอใหม่
+  end
+else ไม่ใช่เจ้าของ / จำนวนผิด / มีคำขอค้าง
+  System --> User : แจ้งข้อผิดพลาด
+end
+@enduml

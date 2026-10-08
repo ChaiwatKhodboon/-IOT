@@ -1,0 +1,28 @@
+@startuml
+skinparam defaultFontName Tahoma
+actor Admin
+boundary Client
+control "Loans API + Auth" as API
+database "PostgreSQL + Audit trigger" as DB
+Admin -> Client : เลือกส่วนคืนชำรุดและกดซ่อมเสร็จ
+Client -> API : POST /api/loans/:id/repair + JWT
+API -> API : authenticate + adminOnly
+API -> DB : BEGIN + actor
+API -> DB : ล็อก returned damaged/abnormal ที่ยังไม่ repaired
+alt ไม่พบรายการที่ซ่อมได้
+  API -> DB : ROLLBACK
+  API --> Client : 404
+else พบรายการ
+  API -> DB : ล็อก equipment และตรวจ maintenance_quantity
+  alt จำนวนรอซ่อมไม่พอ
+    API -> DB : ROLLBACK
+    API --> Client : 409
+  else จำนวนถูกต้อง
+    API -> DB : maintenance -= quantity; available += quantity
+    API -> DB : บันทึก repaired_at และ repaired_by
+    note right of DB : equipment status เป็น available\nเมื่อ maintenance เหลือ 0\nมิฉะนั้นเป็น maintenance
+    API -> DB : COMMIT
+    API --> Client : สำเร็จ และ broadcast(loans)
+  end
+end
+@enduml

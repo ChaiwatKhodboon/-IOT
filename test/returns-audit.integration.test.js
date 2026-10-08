@@ -1,0 +1,113 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {randomUUID}=require('node:crypto');
+
+test('PostgreSQL partial returns, concurrency, audit and permissions',{skip:process.env.DB_INTEGRATION!=='1'},async()=>{
+  const {Pool}=require('pg');
+  const config=require('../src/config');
+  const schema='test_returns_'+randomUUID().replaceAll('-','');
+  const adminPool=new Pool({connectionString:config.databaseUrl});
+  const pool=new Pool({connectionString:config.databaseUrl,options:`-c search_path=${schema},public`});
+  let server;
+  try{
+    await adminPool.query(`CREATE SCHEMA ${schema}`);
+    await pool.query(fs.readFileSync(path.join(__dirname,'../database/schema.sql'),'utf8'));
+    await pool.query(fs.readFileSync(path.join(__dirname,'../database/migrations/011_partial_returns_audit.sql'),'utf8'));
+    await pool.query(fs.readFileSync(path.join(__dirname,'../database/migrations/012_return_inspection.sql'),'utf8'));
+    const user=(await pool.query("INSERT INTO users(username,password_hash,full_name,role) VALUES('borrower','not-a-real-password','Borrower','user'),('staff','not-a-real-password','Staff','admin'),('other','not-a-real-password','Other','user') RETURNING id,role")).rows;
+    const jwt=require('jsonwebtoken');
+    const tokens=user.map(u=>jwt.sign({id:u.id,role:u.role},config.jwtSecret));
+    require.cache[require.resolve('../src/db')]={id:require.resolve('../src/db'),filename:require.resolve('../src/db'),loaded:true,exports:pool};
+    const app=require('../src/app');
+    server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s))});
+    async function api(url,method='GET',body,actor=url.endsWith('/return')?1:0){
+      const response=await fetch(`http://127.0.0.1:${server.address().port}/api${url}`,{method,headers:{Authorization:`Bearer ${tokens[actor]}`,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+      return {status:response.status,data:response.status===204?null:await response.json()};
+    }
+    let r=await api('/equipment','POST',{name:'Test sensor',code:'TEST-1',category:'Sensor',totalQuantity:10,status:'available'},1);assert.equal(r.status,201);
+    const equipmentId=r.data.id;
+    r=await api('/loans','POST',{equipmentId,quantity:5,dueAt:'2027-01-01'});assert.equal(r.status,201);const id=r.data.id;
+    const payload={requestId:randomUUID(),quantities:{normal:2,damaged:1},remark:'mixed partial'};
+    assert.equal((await api(`/loans/${id}/return`,'POST',payload,2)).status,404);
+    const pair=await Promise.all([api(`/loans/${id}/return`,'POST',payload),api(`/loans/${id}/return`,'POST',payload)]);
+    assert.equal(pair[0].status,200);assert.deepEqual(pair[0].data,pair[1].data);assert.equal(pair[0].data.remainingQuantity,2);
+    let eq=(await pool.query('SELECT * FROM equipment WHERE id=$1',[equipmentId])).rows[0];assert.equal(eq.available_quantity,7);assert.equal(eq.maintenance_quantity,1);
+    assert.equal((await api(`/loans/${id}/return`,'POST',{quantities:{normal:3}})).status,400);
+    assert.equal((await api(`/loans/${id}/return`,'POST',{...payload,quantities:{normal:1}})).status,409);
+    // Audit failure must roll back stock and return rows in the same transaction.
+    await pool.query("ALTER TABLE audit_logs ADD CONSTRAINT test_block_return CHECK(action<>'return') NOT VALID");
+    assert.equal((await api(`/loans/${id}/return`,'POST',{quantities:{normal:1}})).status,500);
+    assert.equal((await pool.query('SELECT quantity FROM loans WHERE id=$1',[id])).rows[0].quantity,2);
+    await pool.query('ALTER TABLE audit_logs DROP CONSTRAINT test_block_return');
+    r=await api(`/loans/${id}/return`,'POST',{requestId:randomUUID(),quantities:{lost:1,abnormal:1}},1);assert.equal(r.status,200);assert.equal(r.data.remainingQuantity,0);
+    assert.equal((await api(`/loans/${id}/return`,'POST',{quantities:{normal:1}})).status,404);
+    const records=(await api('/loans')).data;assert.equal(records.reduce((n,l)=>n+l.quantity,0),5);assert.ok(records.every(l=>String(l.rootLoanId)===String(id)&&l.returnedByName));
+    const repair=records.find(l=>l.returnCondition==='damaged');
+    assert.equal((await api(`/loans/${repair.id}/repair`,'POST',{},0)).status,403);
+    assert.equal((await api(`/loans/${repair.id}/repair`,'POST',{},1)).status,200);
+    assert.equal((await api(`/loans/${repair.id}/repair`,'POST',{},1)).status,404);
+    eq=(await pool.query('SELECT * FROM equipment WHERE id=$1',[equipmentId])).rows[0];assert.equal(eq.available_quantity,8);assert.equal(eq.maintenance_quantity,1);
+    r=await api(`/equipment/${equipmentId}`,'PUT',{name:'Test sensor',code:'TEST-1',category:'Sensor',totalQuantity:12,status:'maintenance'},1);assert.equal(r.status,200);
+    assert.equal((await api('/audit')).status,403);
+    r=await api('/audit','GET',undefined,1);assert.equal(r.status,200);
+    assert.ok(r.data.items.some(e=>e.action==='partial_return'&&e.actorName==='Staff'));
+    assert.ok(r.data.items.some(e=>e.action==='repair'&&e.actorName==='Staff'));
+    assert.ok(r.data.items.some(e=>e.entityType==='equipment'&&e.beforeData?.total_quantity===10&&e.afterData?.total_quantity===12));
+    assert.ok(!JSON.stringify(r.data).includes('not-a-real-password'));
+    const returnStock=r.data.items.find(e=>e.entityType==='equipment'&&e.relatedActions?.some(action=>action.action==='return'));
+    assert.equal(returnStock.equipmentName,'Test sensor');
+    assert.equal(returnStock.equipmentCode,'TEST-1');
+    assert.ok(returnStock.relatedActions.some(action=>action.borrowerName==='Borrower'));
+    const returnEvent=r.data.items.find(e=>e.action==='return');
+    assert.equal(returnEvent.borrowerName,'Borrower');
+    assert.equal(returnEvent.personNames[user[0].id],'Borrower');
+    const searched=await api('/audit?search=Test%20sensor&type=loans','GET',undefined,1);
+    assert.ok(searched.data.items.length>0);
+    assert.ok(searched.data.items.every(e=>e.entityType==='loans'&&e.equipmentName==='Test sensor'));
+    const dashboard=(await api('/dashboard')).data;assert.equal(dashboard.borrowedQuantity,0);assert.equal(dashboard.lost,1);assert.equal(dashboard.maintenance,1);
+    // Two different requests cannot return more than the locked outstanding balance.
+    r=await api('/loans','POST',{equipmentId,quantity:2});const nextId=r.data.id;
+    const competing=await Promise.all([1,2].map(()=>api(`/loans/${nextId}/return`,'POST',{requestId:randomUUID(),quantities:{normal:2}})));
+    assert.deepEqual(competing.map(v=>v.status).sort(),[200,404]);
+    // User requests never alter stock, including duplicate and competing submissions.
+    r=await api('/loans','POST',{equipmentId,quantity:3});const pendingLoan=r.data.id;
+    const stockBefore=(await pool.query('SELECT available_quantity FROM equipment WHERE id=$1',[equipmentId])).rows[0].available_quantity;
+    const request={requestId:randomUUID(),quantities:{normal:2,damaged:1},remark:'Please inspect'};
+    const submitted=await api(`/loans/${pendingLoan}/return`,'POST',request,0);
+    assert.equal(submitted.status,202);assert.equal(submitted.data.remainingQuantity,3);
+    assert.deepEqual((await api(`/loans/${pendingLoan}/return`,'POST',request,0)).data,submitted.data);
+    assert.equal((await api(`/loans/${pendingLoan}/return`,'POST',{quantities:{normal:1}},0)).status,409);
+    assert.equal((await pool.query('SELECT available_quantity FROM equipment WHERE id=$1',[equipmentId])).rows[0].available_quantity,stockBefore);
+    let pending=(await api('/loans?status=pending_return')).data.find(l=>l.id===pendingLoan);
+    assert.ok(pending);assert.equal(pending.quantity,3);assert.equal(pending.pendingReturn.quantity,3);
+    assert.equal((await api(`/loans/${pendingLoan}/return/reject`,'POST',{inspectionId:pending.pendingReturn.id,reason:'Not received'},0)).status,403);
+    assert.equal((await api(`/loans/${pendingLoan}/return`,'POST',{quantities:{normal:3}},1)).status,409);
+    assert.equal((await api(`/loans/${pendingLoan}/return/reject`,'POST',{inspectionId:pending.pendingReturn.id,reason:'Not received'},1)).status,200);
+    assert.equal((await pool.query('SELECT available_quantity FROM equipment WHERE id=$1',[equipmentId])).rows[0].available_quantity,stockBefore);
+    assert.equal((await api('/loans')).data.find(l=>l.id===pendingLoan).returnRejection,'Not received');
+    const oldId=pending.pendingReturn.id;
+    const simultaneous=await Promise.all([1,2].map(()=>api(`/loans/${pendingLoan}/return`,'POST',{requestId:randomUUID(),quantities:{normal:3}},0)));
+    assert.deepEqual(simultaneous.map(r=>r.status).sort(),[202,409]);
+    pending=(await api('/loans')).data.find(l=>l.id===pendingLoan);
+    assert.equal((await api(`/loans/${pendingLoan}/return`,'POST',{inspectionId:oldId,quantities:{normal:3}},1)).status,409);
+    const inspection={requestId:randomUUID(),inspectionId:pending.pendingReturn.id,quantities:{normal:1,damaged:1}};
+    await pool.query("ALTER TABLE audit_logs ADD CONSTRAINT test_inspection_rollback CHECK(action<>'return') NOT VALID");
+    assert.equal((await api(`/loans/${pendingLoan}/return`,'POST',inspection,1)).status,500);
+    assert.equal((await api('/loans')).data.find(l=>l.id===pendingLoan).pendingReturn.id,pending.pendingReturn.id);
+    await pool.query('ALTER TABLE audit_logs DROP CONSTRAINT test_inspection_rollback');
+    const approvals=await Promise.all([1,2].map(()=>api(`/loans/${pendingLoan}/return`,'POST',inspection,1)));
+    assert.equal(approvals[0].status,200);assert.deepEqual(approvals[0].data,approvals[1].data);
+    assert.equal(approvals[0].data.remainingQuantity,1);
+    assert.equal((await pool.query('SELECT available_quantity FROM equipment WHERE id=$1',[equipmentId])).rows[0].available_quantity,stockBefore+1);
+    pending=(await api('/loans')).data.find(l=>l.id===pendingLoan);
+    assert.equal(pending.pendingReturn,null);assert.equal(pending.quantity,1);
+    assert.equal((await api(`/loans/${pendingLoan}/return`,'POST',{...inspection,requestId:randomUUID()},1)).status,409);
+  }finally{
+    if(server)await new Promise(resolve=>server.close(resolve));
+    await pool.end();
+    await adminPool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+    await adminPool.end();
+  }
+});

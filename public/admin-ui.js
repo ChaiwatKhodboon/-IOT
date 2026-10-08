@@ -90,7 +90,7 @@
       const displayStatus=equipmentDisplayStatus(item);
       return `<article class="card admin-equipment-card">
       <div class="device-art">${equipmentArt(item)}</div>
-      <div><span class="badge ${displayStatus}">${txt[displayStatus]}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta">${esc(item.category)} · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
+      <div><span class="badge ${displayStatus}">${txt[displayStatus]}</span><h3>${esc(item.name)}</h3><div class="code">${esc(item.code)}</div><p class="meta"><span translate="no">${esc(item.category)}</span> · ชำรุด ${item.maintenanceQuantity||0} ชิ้น · ยืมได้ ${item.availableQuantity} ชิ้น</p></div>
       <div class="admin-card-tools">
         <input id="equipment-image-${item.id}" class="equipment-image-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="changeEquipmentImage(event,${item.id})">
         <label class="icon-image" for="equipment-image-${item.id}" aria-label="เพิ่มหรือเปลี่ยนรูป ${esc(item.name)}" title="เพิ่มหรือเปลี่ยนรูป"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l1.5-2h5L16 7h4v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>${item.imageUrl?'เปลี่ยนรูป':'เพิ่มรูป'}</span></label>
@@ -138,7 +138,7 @@
   };
 
   window.removeAdminEquipment=async function(id){
-    if(!confirm('ยืนยันการลบอุปกรณ์รายการนี้?'))return;
+    if(!await confirmLocalized('ยืนยันการลบอุปกรณ์รายการนี้?'))return;
     try{
       await api(`/equipment/${id}`,{method:'DELETE'});
       toast('ลบอุปกรณ์เรียบร้อยแล้ว');
@@ -156,12 +156,12 @@
         <button class="button primary export-button" type="button" onclick="openLoanExport()">⭳ ดาวน์โหลด Excel</button>
       </div>
       <div class="search"><input id="adminLoanSearch" placeholder="ค้นหาชื่อผู้ยืม รหัสนิสิต หรืออุปกรณ์..."></div>
-      <div class="filter-row"><button class="chip active" data-status="">ทั้งหมด</button><button class="chip" data-status="borrowed">กำลังยืม</button><button class="chip" data-status="returned">คืนแล้ว</button></div>
+      <div class="filter-row"><button class="chip active" data-status="">ทั้งหมด</button><button class="chip" data-status="borrowed">กำลังยืม</button><button class="chip" data-status="pending_return">รอตรวจรับ</button><button class="chip" data-status="returned">คืนแล้ว</button></div>
       <div id="adminLoanList">${renderAdminLoans(state.loans)}</div>`;
     let selectedStatus='';
     const update=()=>{
       const search=$('#adminLoanSearch').value.toLowerCase();
-      const filtered=state.loans.filter(item=>(!selectedStatus||item.status===selectedStatus)&&(`${item.borrowerName} ${item.studentId||''} ${item.equipmentName} ${item.equipmentCode}`).toLowerCase().includes(search));
+      const filtered=state.loans.filter(item=>(!selectedStatus||(selectedStatus==='pending_return'?!!item.pendingReturn:item.status===selectedStatus))&&(`${item.borrowerName} ${item.studentId||''} ${item.equipmentName} ${item.equipmentCode}`).toLowerCase().includes(search));
       $('#adminLoanList').innerHTML=renderAdminLoans(filtered);
     };
     $('#adminLoanSearch').oninput=update;
@@ -174,7 +174,7 @@
   window.renderAdminLoans=function(items){
     if(!items.length)return '<div class="card empty-state">ไม่พบรายการยืม</div>';
     return items.map(item=>`<article class="card admin-loan-card">
-      <div class="admin-loan-top"><div class="device-art">${equipmentArt({imageUrl:item.imageUrl,name:item.equipmentName,category:''})}</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">จำนวน ${item.quantity} ชิ้น</p></div><span class="badge ${item.status}">${txt[item.status]}</span></div>
+      <div class="admin-loan-top"><div class="device-art">${equipmentArt({imageUrl:item.imageUrl,name:item.equipmentName,category:''})}</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">จำนวน ${item.quantity} ชิ้น</p></div><span class="badge ${item.pendingReturn?'pending_return':item.status}">${txt[item.pendingReturn?'pending_return':item.status]}</span></div>
       <div class="borrower-row"><span class="borrower-avatar">${item.borrowerAvatar?`<img src="${esc(item.borrowerAvatar)}" alt="รูปโปรไฟล์ ${esc(item.borrowerName)}">`:esc((item.borrowerName||'?')[0])}</span><div><small>ผู้ยืม</small><b>${esc(item.borrowerName)}</b><span>${esc(item.studentId||'ไม่มีรหัสนิสิต')}</span></div></div>
       <footer><span>วันที่ยืม <b>${date(item.borrowedAt)}</b></span><span>กำหนดคืน <b>${date(item.dueAt)}</b></span></footer>
     </article>`).join('');
@@ -187,7 +187,7 @@
       const repairable=['damaged','abnormal'].includes(item.returnCondition);
       return (!repairable||!item.repairedAt)&&(item.borrowRemark||item.returnRemark||issueConditions.includes(item.returnCondition));
     });
-    $('#content').innerHTML=`<h1 class="page-title">ซ่อมบำรุง</h1><p class="subtitle">แสดงเฉพาะอุปกรณ์ที่มีหมายเหตุหรือถูกระบุว่าชำรุด</p><div class="search"><input id="maintenanceSearch" placeholder="ค้นหาอุปกรณ์หรือผู้แจ้ง..."></div><div id="maintenanceList">${renderMaintenance(items)}</div>`;
+    $('#content').innerHTML=`<div class="admin-page-head loan-page-head"><div><h1 class="page-title">ซ่อมบำรุง</h1><p class="subtitle">แสดงเฉพาะอุปกรณ์ที่มีหมายเหตุหรือถูกระบุว่าชำรุด</p></div><button class="button primary export-button" type="button" onclick="openMaintenanceExport()">⭳ ดาวน์โหลด Excel</button></div><div class="search"><input id="maintenanceSearch" placeholder="ค้นหาอุปกรณ์หรือผู้แจ้ง..."></div><div id="maintenanceList">${renderMaintenance(items)}</div>`;
     $('#maintenanceSearch').oninput=event=>{
       const search=event.target.value.toLowerCase();
       $('#maintenanceList').innerHTML=renderMaintenance(items.filter(item=>(`${item.equipmentName} ${item.equipmentCode} ${item.borrowerName} ${item.borrowRemark||''} ${item.returnRemark||''}`).toLowerCase().includes(search)));
@@ -198,13 +198,13 @@
     if(!items.length)return '<div class="card empty-state"><b>ไม่มีอุปกรณ์รอซ่อม</b><p class="meta">รายการที่มีหมายเหตุหรือระบุว่าชำรุดจะแสดงที่นี่</p></div>';
     return items.map(item=>`<article class="card maintenance-card ${item.returnCondition||'remark'}">
       <div class="admin-loan-top"><div class="device-art">${equipmentArt({imageUrl:item.imageUrl,name:item.equipmentName,category:''})}</div><div><div class="code">${esc(item.equipmentCode)}</div><h3>${esc(item.equipmentName)}</h3><p class="meta">แจ้งโดย ${esc(item.borrowerName)}${item.studentId?` · ${esc(item.studentId)}`:''}</p></div>${item.returnCondition?`<span class="badge ${item.returnCondition}">${txt[item.returnCondition]}</span>`:'<span class="badge borrowed">มีหมายเหตุ</span>'}</div>
-      <div class="issue-note"><small>หมายเหตุ</small><p>${esc(item.returnRemark||item.borrowRemark||'ไม่ได้ระบุรายละเอียด')}</p></div>
+      <div class="issue-note"><small>หมายเหตุ</small><p ${item.returnRemark||item.borrowRemark?'translate="no"':''}>${esc(item.returnRemark||item.borrowRemark||'ไม่ได้ระบุรายละเอียด')}</p></div>
       <footer><span>วันที่แจ้ง/คืน <b>${date(item.returnedAt||item.borrowedAt)}</b></span>${['damaged','abnormal'].includes(item.returnCondition)?`<button class="button primary compact" onclick="completeRepair(${item.id})">✓ เสร็จสิ้น</button>`:''}</footer>
     </article>`).join('');
   };
 
   window.completeRepair=async function(id){
-    if(!confirm('ยืนยันว่าซ่อมอุปกรณ์รายการนี้เสร็จแล้วและพร้อมให้ยืม?'))return;
+    if(!await confirmLocalized('ยืนยันว่าซ่อมอุปกรณ์รายการนี้เสร็จแล้วและพร้อมให้ยืม?'))return;
     try{
       const result=await api(`/loans/${id}/repair`,{method:'POST'});
       toast(result.message);
@@ -212,12 +212,6 @@
     }catch(error){toast(error.message,true);}
   };
 
-  window.addEventListener('hashchange',()=>{
-    if(location.hash==='#maintenance'&&state.user?.role==='admin'){
-      window.active('maintenance');
-      window.maintenance().catch(error=>toast(error.message,true));
-    }
-  });
 
   if(state.user?.role==='admin'){
     window.nav();

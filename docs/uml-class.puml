@@ -1,0 +1,144 @@
+@startuml
+skinparam defaultFontName Tahoma
+class User {
+  id: bigint
+  username: string
+  email: string?
+  passwordHash: string
+  googleSub: string?
+  fullName: string
+  studentId: string?
+  avatarData: text?
+  role: UserRole
+  active: boolean
+  createdAt: timestamp
+  -- พฤติกรรมเชิงแนวคิด --
+  +ยืนยันตัวตน()
+  +แก้โปรไฟล์()
+}
+class Equipment {
+  id: bigint
+  code: string
+  name: string
+  category: string
+  description: text?
+  imageData: text?
+  totalQuantity: integer
+  availableQuantity: integer
+  maintenanceQuantity: integer
+  status: EquipmentStatus
+  createdAt: timestamp
+  updatedAt: timestamp
+  -- พฤติกรรมเชิงแนวคิด --
+  +ตรวจจำนวนพร้อมยืม(quantity)
+  +ปรับยอดคลัง(normal, maintenance)
+}
+class Loan {
+  id: bigint
+  userId: bigint
+  equipmentId: bigint
+  quantity: integer
+  originalQuantity: integer
+  parentLoanId: bigint?
+  borrowerName: string?
+  borrowedAt: timestamp
+  dueAt: timestamp?
+  returnedAt: timestamp?
+  status: LoanStatus
+  borrowRemark: text?
+  returnRemark: text?
+  returnCondition: ConditionStatus?
+  returnedBy: bigint?
+  repairedAt: timestamp?
+  repairedBy: bigint?
+  pendingReturn: PendingReturn?
+  returnRejection: text?
+  updatedAt: timestamp
+  -- พฤติกรรมเชิงแนวคิด --
+  +ส่งคำขอคืน(quantities)
+  +ตรวจรับคืน(quantities)
+  +คำนวณจำนวนค้างคืน()
+}
+class PendingReturn <<value object / JSONB>> {
+  id: UUID
+  quantities: condition-to-integer map
+  quantity: integer
+  remark: string
+  requestedBy: bigint
+  requestedAt: timestamp
+}
+class ReturnRequest <<loan_return_requests>> {
+  requestId: UUID
+  loanId: bigint
+  actorId: bigint
+  payload: JSONB
+  result: JSONB
+  createdAt: timestamp
+}
+class PasswordResetOTP {
+  id: bigint
+  userId: bigint
+  otpHash: char(64)
+  expiresAt: timestamp
+  usedAt: timestamp?
+  attempts: integer
+  createdAt: timestamp
+}
+class AuditLog {
+  id: bigint
+  actorId: bigint?
+  actorName: text
+  entityType: text
+  entityId: bigint
+  action: text
+  beforeData: JSONB?
+  afterData: JSONB?
+  createdAt: timestamp
+}
+enum UserRole {
+  user
+  admin
+}
+enum EquipmentStatus {
+  available
+  maintenance
+  retired
+}
+enum LoanStatus {
+  borrowed
+  returned
+}
+enum ConditionStatus {
+  normal
+  damaged
+  lost
+  abnormal
+}
+User "1" -- "0..*" Loan : ผู้ยืม / userId
+Equipment "1" -- "0..*" Loan : equipmentId
+Loan "0..1" <-- "0..*" Loan : parentLoanId / ส่วนคืน
+User "0..1" -- "0..*" Loan : ผู้ตรวจรับ / returnedBy
+User "0..1" -- "0..*" Loan : ผู้ปิดซ่อม / repairedBy
+Loan "1" *-- "0..1" PendingReturn
+User "1" -- "0..*" PendingReturn : requestedBy (logical)
+Loan "1" -- "0..*" ReturnRequest
+User "1" -- "0..*" ReturnRequest : actorId
+User "1" -- "0..*" PasswordResetOTP
+User "0..1" .. "0..*" AuditLog : actorId (logical, no FK)
+User ..> UserRole
+Equipment ..> EquipmentStatus
+Loan ..> LoanStatus
+Loan ..> ConditionStatus
+note bottom of AuditLog
+  entityType + entityId อ้างอิงสิ่งที่เปลี่ยนแบบ logical
+  ไม่ใช่ foreign key เดียวไปยังตารางทั้งหมด
+  actorName เก็บชื่อ ณ เวลาทำรายการ
+end note
+note bottom of Loan
+  quantity คือจำนวนของแถวนั้น
+  borrowed row = จำนวนค้างคืน
+  returned row = จำนวนส่วนที่คืน
+  originalQuantity ของต้นทาง = จำนวนยืมเดิม
+  pendingReturn มีได้เฉพาะ status=borrowed
+end note
+@enduml

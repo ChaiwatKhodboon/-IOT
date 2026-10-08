@@ -1,0 +1,19 @@
+@startuml
+skinparam defaultFontName Tahoma
+state "คืนปกติ\nreturned + normal" as Normal
+state "คืนชำรุด/ผิดปกติ รอซ่อม\nreturned + damaged/abnormal\nrepaired_at=null" as RepairPending
+state "ซ่อมเสร็จ\nreturned + damaged/abnormal\nrepaired_at มีค่า" as Repaired
+state "บันทึกสูญหาย\nreturned + lost" as Lost
+[*] --> Normal : ตรวจรับ normal / เพิ่ม available
+[*] --> RepairPending : ตรวจรับ damaged/abnormal / เพิ่ม maintenance
+[*] --> Lost : ตรวจรับ lost / ไม่เพิ่มคลัง
+RepairPending --> Repaired : Admin ปิดซ่อม\nmaintenance ลด และ available เพิ่ม
+Normal --> [*]
+Repaired --> [*]
+Lost --> [*]
+note right of Repaired
+  return_condition ไม่เปลี่ยนเป็น normal
+  ประวัติยังแสดงสภาพเมื่อคืน
+  ใช้ repaired_at ระบุว่าซ่อมเสร็จแล้ว
+end note
+@enduml

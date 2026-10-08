@@ -6,19 +6,24 @@
   if(location.hash)history.replaceState(null,'',location.pathname);
 
   const appScript=document.createElement('script');
-  appScript.src='/app.js?v=realtime-v1';
+  appScript.src='/app.js?v=language-v1';
   appScript.onload=()=>{
     const googleScript=document.createElement('script');
-    googleScript.src='/google-login.js?v=explicit-signin-v2';
+    googleScript.src='/google-login.js?v=language-v1';
     document.body.appendChild(googleScript);
     const authScript=document.createElement('script');
     authScript.src='/auth-pages.js?v=password-change-v1';
     authScript.onload=()=>{
       const adminScript=document.createElement('script');
-      adminScript.src='/admin-ui.js?v=borrower-avatar-v1';
+      adminScript.src='/admin-ui.js?v=language-v1';
       adminScript.onload=()=>{
         const managementScript=document.createElement('script');
-        managementScript.src='/management-ui.js?v=profile-pencil-v3';
+        managementScript.src='/management-ui.js?v=language-v1';
+        managementScript.onload=()=>{
+          const featuresScript=document.createElement('script');
+          featuresScript.src='/returns-audit.js?v=1';
+          document.body.appendChild(featuresScript);
+        };
         document.body.appendChild(managementScript);
       };
       document.body.appendChild(adminScript);
