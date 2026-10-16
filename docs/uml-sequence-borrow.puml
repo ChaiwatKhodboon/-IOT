@@ -1,7 +1,7 @@
 @startuml
 skinparam defaultFontName Tahoma
 actor "สมาชิก" as U
-boundary "เว็บ / Flutter" as UI
+boundary "เว็บแอป" as UI
 control "Auth middleware" as Auth
 control "Loans API" as API
 database "PostgreSQL + Audit trigger" as DB

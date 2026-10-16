@@ -19,10 +19,10 @@ const otpHash = (userId, otp) => crypto.createHmac('sha256', otpSecret).update(`
 
 router.post('/login', async (req, res, next) => {
   try {
-    const username = cleanText(req.body.username, 50);
+    const username = cleanText(req.body.username, 254);
     const { rows } = await pool.query('SELECT id, username, email, password_hash, full_name, student_id, avatar_data, role FROM users WHERE (LOWER(username)=$1 OR LOWER(COALESCE(email,\'\'))=$1) AND active=TRUE', [username.toLowerCase()]);
     const user = rows[0];
-    if (!user || !(await bcrypt.compare(String(req.body.password || ''), user.password_hash))) return res.status(401).json({ message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+    if (!user || !(await bcrypt.compare(String(req.body.password || ''), user.password_hash))) return res.status(401).json({ message: 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง' });
     const profile = { id: user.id, username: user.username, email: user.email, fullName: user.full_name, studentId: user.student_id, avatarUrl: user.avatar_data, role: user.role };
     const claims = { id: user.id, username: user.username, fullName: user.full_name, studentId: user.student_id, role: user.role };
     res.json({ token: jwt.sign(claims, jwtSecret, { expiresIn: '8h' }), user: profile });

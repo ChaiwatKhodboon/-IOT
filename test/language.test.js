@@ -38,7 +38,7 @@ test('translates decorated labels, dynamic counters and server errors without su
   assert.equal(t('⚠ มีรายการเกินกำหนด 12 รายการ'),'⚠ 12 overdue loans');
   assert.equal(t('ประวัติทั้งหมด 10 รายการ · กำลังยืม 3 · เกินกำหนด 2'),'10 history records · 3 on loan · 2 overdue');
   assert.equal(t('ซ่อมเสร็จแล้ว 2 ชิ้น และพร้อมให้ยืม'),'2 units repaired and available');
-  assert.equal(t('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'),'Incorrect username or password');
+  assert.equal(t('ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง'),'Incorrect username/email or password');
   assert.equal(t('เซ็นเซอร์ชำรุดของสมชาย'),'เซ็นเซอร์ชำรุดของสมชาย');
 });
 
@@ -81,7 +81,7 @@ test('dates, document language, in-app confirmation and original English labels 
 
 test('API messages have English translations',()=>{
   const app=setup('en');
-  const paths=['src/routes/auth.js','src/routes/equipment.js','src/routes/loans.js','src/routes/users.js','src/routes/google-auth.js','src/middleware/auth.js','src/utils/validation.js','src/app.js'];
+  const paths=['src/routes/chat.js','src/routes/auth.js','src/routes/equipment.js','src/routes/loans.js','src/routes/users.js','src/routes/google-auth.js','src/middleware/auth.js','src/utils/validation.js','src/app.js'];
   for(const path of paths){
     const source=fs.readFileSync(path,'utf8');
     for(const match of source.matchAll(/(?:message|error):\s*'([^']*[ก-๙][^']*)'/g)){
@@ -92,7 +92,7 @@ test('API messages have English translations',()=>{
 
 test('static UI labels and placeholders have English translations',()=>{
   const app=setup('en');
-  for(const path of ['public/index.html','public/app.js','public/admin-ui.js','public/management-ui.js','public/auth-pages.js','public/google-login.js']){
+  for(const path of ['public/chat.js','public/index.html','public/app.js','public/admin-ui.js','public/management-ui.js','public/auth-pages.js','public/google-login.js']){
     const source=fs.readFileSync(path,'utf8');
     const strings=[...source.matchAll(/(['"])([^'"\r\n]*[ก-๙][^'"\r\n]*)\1/g)].map(match=>match[2]);
     const labels=[...source.matchAll(/>([^<>\r\n]*[ก-๙][^<>\r\n]*)</g)].map(match=>match[1].trim());

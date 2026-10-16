@@ -15,6 +15,7 @@ app.use('/api/loans', loans);
 app.use('/api/dashboard', dashboard);
 app.use('/api/users', users);
 app.use('/api/audit', require('./routes/audit'));
+app.use('/api/chat', require('./routes/chat').createChatRouter({ pool: require('./db'), broadcast: realtime.broadcast }));
 app.get('/api/events', realtime.events);
 app.get('/api/health', (_req,res) => res.json({ status:'ok' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));

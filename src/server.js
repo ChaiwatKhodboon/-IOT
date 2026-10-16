@@ -22,6 +22,6 @@ async function start() {
       throw error;
     } finally { client.release(); }
   }
-  app.listen(port, () => console.log(`IoT Equipment Loan System: http://localhost:${port}`));
+  app.listen(port, () => console.log(`IOT Equipment Loan System: http://localhost:${port}`));
 }
 start().catch((error) => { console.error('Cannot start server:', error.message); process.exit(1); });

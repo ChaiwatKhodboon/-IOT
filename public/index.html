@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f8fb">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="description" content="ระบบยืมคืนอุปกรณ์ IoT">
-  <title>ระบบยืมคืนอุปกรณ์ IoT</title>
+  <meta name="description" content="ระบบยืมคืนอุปกรณ์ IOT">
+  <title>ระบบยืมคืนอุปกรณ์ IOT</title>
   <link rel="manifest" href="/manifest.webmanifest?v=7">
   <link rel="icon" type="image/jpeg" href="/icons/IT.jpg">
   <link rel="apple-touch-icon" href="/icons/IT.jpg">
@@ -14,21 +14,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=login-layout-v3">
+  <link rel="stylesheet" href="/chat.css?v=3">
 </head>
 <body>
   <div id="toast" class="toast" role="status"></div>
   <section id="loginView" class="auth-screen">
-    <div class="auth-top"><p>สาขาเทคโนโลยีสารสนเทศ</p><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong></div>
+    <div class="auth-top"><p>สาขาเทคโนโลยีสารสนเทศ</p><strong>ระบบยืม-คืน อุปกรณ์ IOT</strong></div>
     <div class="auth-content">
       <div class="auth-language-bar"><div class="auth-language-switch" role="group" aria-label="เปลี่ยนภาษา">
         <button type="button" lang="th" translate="no" data-language="th" aria-pressed="true" onclick="I18n.setLanguage('th')">ไทย</button>
         <button type="button" lang="en" translate="no" data-language="en" aria-pressed="false" onclick="I18n.setLanguage('en')">EN</button>
       </div></div>
-      <img class="auth-logo" src="/icons/IT.jpg" alt="IoT Loan">
+      <img class="auth-logo" src="/icons/IT.jpg" alt="IOT Loan">
       <h1>เข้าสู่ระบบ</h1>
       <form id="loginForm" class="auth-card" autocomplete="off">
         <h2>ลงชื่อเข้าใช้ระบบ</h2>
-        <label>ชื่อผู้ใช้<input name="username" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="กรอกชื่อผู้ใช้" required></label>
+        <label>ชื่อผู้ใช้/อีเมล<input name="username" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="กรอกชื่อผู้ใช้หรืออีเมล" required></label>
         <label>รหัสผ่าน<div class="password-field"><input name="password" type="password" autocomplete="new-password" placeholder="••••••••" required><button class="password-toggle" type="button" onclick="togglePassword(this)" aria-label="แสดงรหัสผ่าน" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.8"/></svg></button></div></label>
         <div class="forgot-row"><button type="button" onclick="forgotPassword()">ลืมรหัสผ่าน?</button></div>
         <button class="button primary wide">เข้าสู่ระบบ</button>
@@ -50,13 +51,13 @@
     </div>
   </section>
   <section id="signupView" class="auth-screen hidden">
-    <div class="auth-top"><p>สาขาเทคโนโลยีสารสนเทศ</p><strong>ระบบยืม-คืน อุปกรณ์ IoT</strong></div>
+    <div class="auth-top"><p>สาขาเทคโนโลยีสารสนเทศ</p><strong>ระบบยืม-คืน อุปกรณ์ IOT</strong></div>
     <div class="auth-content">
       <div class="auth-language-bar"><div class="auth-language-switch" role="group" aria-label="เปลี่ยนภาษา">
         <button type="button" lang="th" translate="no" data-language="th" aria-pressed="true" onclick="I18n.setLanguage('th')">ไทย</button>
         <button type="button" lang="en" translate="no" data-language="en" aria-pressed="false" onclick="I18n.setLanguage('en')">EN</button>
       </div></div>
-      <img class="auth-logo" src="/icons/IT.jpg" alt="IoT Loan">
+      <img class="auth-logo" src="/icons/IT.jpg" alt="IOT Loan">
       <h1>สมัครสมาชิก</h1>
       <form id="signupForm" class="auth-card">
         <h2>ลงทะเบียนผู้ใช้ใหม่</h2><p class="form-hint">สำหรับผู้ใช้ที่ยังไม่มีบัญชีเข้าใช้งาน</p>

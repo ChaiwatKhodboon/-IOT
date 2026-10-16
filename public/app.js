@@ -2,6 +2,7 @@ const state={token:localStorage.getItem('token'),user:JSON.parse(localStorage.ge
 let realtimeSource=null,realtimeTimer=null;
 function stopRealtime(){if(realtimeSource){realtimeSource.close();realtimeSource=null}clearTimeout(realtimeTimer)}
 function refreshFromRealtime(type){
+  if(type==='chat')window.ChatWidget?.refresh();
   if(type==='connected'||!state.user||$('#appView').classList.contains('hidden'))return;
   const page=location.hash.slice(1)||'dashboard';
   const relevant={dashboard:['loans','equipment'],borrow:['loans','equipment'],return:['loans'],loans:['loans','equipment','users'],stock:['loans','equipment'],maintenance:['loans','equipment'],accounts:['loans','users']}[page]||[];
@@ -26,9 +27,9 @@ function toast(message,error=false){return window.showNotification(message,{erro
 function saveCart(){localStorage.setItem('cart',JSON.stringify(state.cart))}function icon(e){return /sensor|dht|เซ็นเซอร์/i.test(e.name+e.category)?'♨':/led/i.test(e.name)?'▥':'▣'}
 function equipmentArt(e){return e.imageUrl?`<img class="device-image" src="${esc(e.imageUrl)}" alt="${esc(e.name)}">`:`<span>${icon(e)}</span>`}
 function login(d){state.token=d.token;state.user=d.user;localStorage.setItem('token',d.token);localStorage.setItem('user',JSON.stringify(d.user));history.replaceState(null,'','#dashboard');showApp()}
-function logout(){stopRealtime();localStorage.removeItem('token');localStorage.removeItem('user');state.token=null;state.user=null;$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden')}
+function logout(){stopRealtime();window.ChatWidget?.stop();localStorage.removeItem('token');localStorage.removeItem('user');state.token=null;state.user=null;$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden')}
 function nav(){const admin=state.user.role==='admin';const items=admin?[['dashboard','▦','ตรวจเช็ค'],['stock','▤','คลัง'],['add','⊕','เพิ่ม'],['loans','⌖','ติดตาม'],['profile','♙','บัญชี']]:[['dashboard','▦','ตรวจเช็ค'],['borrow','↝','ยืม'],['return','▣','คืน'],['loans','◴','ประวัติ'],['profile','♙','บัญชี']];$('#bottomNav').innerHTML=items.map(([p,i,t])=>`<a href="#${p}" data-p="${p}"><b>${i}</b>${t}</a>`).join('')}
-function showApp(){if(!state.user)return logout();$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');nav();startRealtime();route()}
+function showApp(){if(!state.user)return logout();$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');nav();startRealtime();window.ChatWidget?.start();route()}
 function active(page){document.querySelectorAll('#bottomNav a').forEach(a=>a.classList.toggle('active',a.dataset.p===page))}
 function equipmentCard(e,withAdd=false){
   const repairing=e.maintenanceQuantity||0,cardStatus=e.status==='retired'?'retired':repairing>0&&repairing===e.totalQuantity?'maintenance':e.availableQuantity>0?'available':'outOfStock';

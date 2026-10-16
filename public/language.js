@@ -1,5 +1,12 @@
 (function setupLanguage(){
   const messages = {
+    'แชทติดต่อแอดมิน':'Chat with admin','ติดต่อแอดมิน':'Contact admin','ข้อความจากผู้ใช้':'User messages','กล่องข้อความ':'Inbox',
+    'ฝากข้อความไว้ได้ แม้แอดมินไม่อยู่':'Leave a message even when the admin is away','ปิดแชท':'Close chat','ห้องสนทนา':'Conversations',
+    'โหลดข้อความก่อนหน้า':'Load earlier messages','ข้อความสนทนา':'Chat messages','ข้อความ':'Message','ส่ง':'Send','แอดมิน':'Admin',
+    'พิมพ์ข้อความถึงแอดมิน…':'Type a message to the admin…','พิมพ์ข้อความตอบกลับ…':'Type a reply…',
+    'ยังไม่มีผู้ใช้ส่งข้อความ':'No user messages yet','เริ่มสนทนาได้เลย':'Start a conversation','เลือกห้องสนทนาเพื่อตอบกลับ':'Select a conversation to reply',
+    'กำลังส่งข้อความ…':'Sending message…','ห้องสนทนาไม่ถูกต้อง':'Invalid conversation','ไม่พบห้องสนทนา':'Conversation not found',
+    'กรุณากรอกข้อความไม่เกิน 2,000 ตัวอักษร':'Enter a message of up to 2,000 characters','ข้อความไม่ถูกต้อง':'Invalid message',
     'จำนวนที่คืนครั้งนี้':'Quantity to return now',
     'แยกจำนวนตามสภาพอุปกรณ์ (รวมให้ตรงกับจำนวนคืนด้านบน)':'Break down by condition. The total must match the quantity above.',
     'จำนวนแยกตามสภาพรวม':'Condition quantities total',
@@ -27,10 +34,10 @@
 "วันที่แจ้งคืน":"Requested on",
     'เปลี่ยนภาษา':'Change language',
     'ติดตาม':'Tracking','ปิด':'Disable','เปิด':'Enable',
-    'ระบบยืมคืนอุปกรณ์ IoT':'IoT Equipment Loan System','รหัสผ่านของระบบยืมคืน':'Loan system password',
+    'ระบบยืมคืนอุปกรณ์ IOT':'IOT Equipment Loan System','รหัสผ่านของระบบยืมคืน':'Loan system password',
     'ยืมได้':'Available to borrow','ชิ้น':'units',
     'หมด':'Out of stock','พร้อมยืม':'Available','เลิกใช้งาน':'Retired','ปกติ':'Normal','ชำรุด':'Damaged','สูญหาย':'Lost','ผิดปกติ':'Abnormal',
-    'กรอกชื่อผู้ใช้':'Enter username','หรือ':'or','เข้าสู่ระบบด้วย Google':'Sign in with Google','กำลังตรวจสอบการเชื่อมต่อ Google…':'Checking Google connection…',
+    'กรอกชื่อผู้ใช้':'Enter username','ชื่อผู้ใช้/อีเมล':'Username/Email','กรอกชื่อผู้ใช้หรืออีเมล':'Enter username or email','หรือ':'or','เข้าสู่ระบบด้วย Google':'Sign in with Google','กำลังตรวจสอบการเชื่อมต่อ Google…':'Checking Google connection…',
     'ครั้งแรกที่เข้าใช้ ระบบจะสร้างบัญชีผู้ใช้งานให้คุณ':'An account will be created on your first sign-in',
     'เชื่อมต่อบัญชีเดิม':'Link existing account','ใช้อีเมลเดียวกับบัญชีเดิม กรุณายืนยันรหัสผ่านของระบบยืมคืนเพื่อเก็บประวัติการใช้งานไว้ด้วยกัน':'This email matches an existing account. Confirm your loan system password to keep your history together.',
     'ยืนยันและเข้าสู่ระบบ':'Confirm and sign in','ยกเลิก':'Cancel','สำหรับผู้ใช้ที่ยังไม่มีบัญชีเข้าใช้งาน':'For users who do not have an account yet',
@@ -96,7 +103,7 @@
     'ไม่พบรายการชำรุดที่รอซ่อม หรือรายการนี้เสร็จสิ้นแล้ว':'No pending repair found, or this repair is already complete','จำนวนอุปกรณ์รอซ่อมไม่ตรงกับรายการ กรุณาตรวจสอบข้อมูล':'Pending repair quantity does not match the record. Please review the data.',
     'รหัสอุปกรณ์นี้มีอยู่แล้ว':'This equipment code already exists','จำนวนรวมต้องไม่น้อยกว่าจำนวนที่กำลังถูกยืม':'Total quantity cannot be less than the quantity on loan','ลบไม่ได้ เนื่องจากอุปกรณ์กำลังถูกยืม':'Cannot delete equipment that is on loan',
     'อุปกรณ์มีประวัติการใช้งาน จึงไม่สามารถลบได้ (เปลี่ยนสถานะเป็นเลิกใช้งานแทน)':'Equipment with usage history cannot be deleted. Change its status to retired.',
-    'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง':'Incorrect username or password','กรุณาระบุชื่อผู้ใช้ อีเมลที่ถูกต้อง และรหัสผ่านอย่างน้อย 8 ตัวอักษร':'Enter a username, valid email and password of at least 8 characters','สมัครสมาชิกเรียบร้อยแล้ว':'Registration complete','ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้งานแล้ว':'This username or email is already in use',
+    'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง':'Incorrect username/email or password','กรุณาระบุชื่อผู้ใช้ อีเมลที่ถูกต้อง และรหัสผ่านอย่างน้อย 8 ตัวอักษร':'Enter a username, valid email and password of at least 8 characters','สมัครสมาชิกเรียบร้อยแล้ว':'Registration complete','ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้งานแล้ว':'This username or email is already in use',
     'กรุณากรอกอีเมลให้ถูกต้อง':'Enter a valid email','ไม่สามารถส่งอีเมลได้ กรุณาตรวจสอบการตั้งค่าอีเมลแล้วลองใหม่':'Unable to send email. Check email settings and try again.',
     'กรุณากรอกอีเมล รหัส OTP 6 หลัก และรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร':'Enter your email, 6-digit OTP and a new password of at least 8 characters','รหัส OTP ไม่ถูกต้อง หมดอายุ หรือถูกใช้งานแล้ว':'OTP is invalid, expired or already used',
     'ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบ':'Password reset. Please sign in.','บัญชีนี้ไม่สามารถใช้งานได้':'This account is unavailable','รูปโปรไฟล์ต้องเป็น JPG, PNG หรือ WebP และมีขนาดไม่เกิน 2 MB':'Profile image must be JPG, PNG or WebP, up to 2 MB',
@@ -113,7 +120,7 @@
   const baseMessages={
     'ยืม':'Borrow','คืน':'Return','ประวัติ':'History','บัญชี':'Account',
     'ภาพรวมอุปกรณ์':'Equipment overview','จัดการอุปกรณ์ทั้งหมด':'Manage all equipment','ตรวจสอบกำหนดคืน':'Review return deadlines','ดูแลและติดตามการซ่อม':'Track equipment repairs','ค้นหาอุปกรณ์ที่ต้องการ':'Find equipment to borrow','จัดการรายการที่ยืมไว้':'Manage borrowed equipment','ดูรายการใช้งานที่ผ่านมา':'View borrowing history','ข้อมูลส่วนตัวและตั้งค่า':'Profile and preferences',
-    'ระบบยืม-คืน อุปกรณ์ IoT':'IOT Equipment Loan System','ระบบยืม-คืน อุปกรณ์ IOT':'IOT Equipment Loan System','สาขาเทคโนโลยีสารสนเทศ':'Information Technology','เมนูจัดการระบบ':'SYSTEM MENU',
+    'ระบบยืม-คืน อุปกรณ์ IOT':'IOT Equipment Loan System','สาขาเทคโนโลยีสารสนเทศ':'Information Technology','เมนูจัดการระบบ':'SYSTEM MENU',
     'ตรวจเช็ค':'Dashboard','คลังอุปกรณ์':'Equipment','ติดตามการยืม':'Loan Tracking','ซ่อมบำรุง':'Maintenance','ผู้ใช้งาน':'Users','บัญชีของฉัน':'My Account','บัญชีAdmin':'Admin Account','บัญชีผู้ใช้งาน':'User Account',
     'เข้าสู่ระบบ':'Sign in','ลงชื่อเข้าใช้ระบบ':'Sign in to continue','ชื่อผู้ใช้':'Username','รหัสผ่าน':'Password','ลืมรหัสผ่าน?':'Forgot password?','สมัครสมาชิกสำหรับผู้ใช้งาน':'Create a user account','สมัครสมาชิก':'Create account','ลงทะเบียนผู้ใช้ใหม่':'New user registration','มีบัญชีอยู่แล้ว / กลับเข้าสู่ระบบ':'Already registered? Sign in',
     'ภาพรวมสถานะอุปกรณ์ทั้งหมดและความเคลื่อนไหวล่าสุด':'Overview of equipment status and recent activity','อุปกรณ์ทั้งหมด':'Total equipment','พร้อมใช้งาน':'Available','ถูกยืมอยู่':'On loan','ชำรุด/รอซ่อม':'Damaged / maintenance','ความเคลื่อนไหวล่าสุด':'Recent activity','ดูทั้งหมด':'View all',
@@ -162,7 +169,7 @@
     [/^เพิ่มหรือเปลี่ยนรูป (.+)$/, 'Add or change image for $1'], [/^ลบ (.+)$/, 'Delete $1']
   ];
   function language(){try{return JSON.parse(localStorage.getItem('preferences')||'{}').language==='en'?'en':'th'}catch{return 'th'}}
-  const thaiLabels={'STAFF SIGN IN':'เข้าสู่ระบบเจ้าหน้าที่','ACCOUNT MANAGEMENT':'จัดการบัญชี','INFORMATION TECHNOLOGY':'เทคโนโลยีสารสนเทศ','IOT EQUIPMENT MANAGEMENT':'ระบบจัดการอุปกรณ์ IoT'};
+  const thaiLabels={'STAFF SIGN IN':'เข้าสู่ระบบเจ้าหน้าที่','ACCOUNT MANAGEMENT':'จัดการบัญชี','INFORMATION TECHNOLOGY':'เทคโนโลยีสารสนเทศ','IOT EQUIPMENT MANAGEMENT':'ระบบจัดการอุปกรณ์ IOT'};
   function translate(source, target=language()){
     if(typeof source!=='string')return source;
     if(target!=='en')return thaiLabels[source.trim()]?source.replace(source.trim(),thaiLabels[source.trim()]):source;
@@ -212,7 +219,7 @@
   window.applyLanguage=function(){
     const next=language();
     document.documentElement.lang=next;
-    document.title=next==='en'?'IoT Equipment Loan System':'ระบบยืมคืนอุปกรณ์ IoT';
+    document.title=next==='en'?'IOT Equipment Loan System':'ระบบยืมคืนอุปกรณ์ IOT';
     apply();
     document.body.querySelectorAll('[data-language]').forEach(button=>{
       button.setAttribute('aria-pressed',String(button.dataset.language===next));

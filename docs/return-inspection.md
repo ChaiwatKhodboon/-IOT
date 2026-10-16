@@ -20,7 +20,6 @@ requestId เป็น UUID สำหรับป้องกันบันท�
 ## ติดตั้ง
 เซิร์ฟเวอร์รัน migration 012_return_inspection.sql อัตโนมัติเมื่อเริ่มใหม่
 Docker ต้อง build และสร้าง app container ใหม่ เพื่อใช้ API รุ่นเดียวกับ frontend
-Flutter ต้อง build และติดตั้งแอปใหม่เพื่อใช้หน้าตรวจรับใหม่ APK เดิมยังส่งคำขอได้แต่ไม่มีหน้าตรวจรับใหม่
 
 ## ทดสอบ
 DB_INTEGRATION=1 node --test ใช้ schema ชั่วคราวแยกจากข้อมูลจริง

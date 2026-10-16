@@ -10,7 +10,7 @@ module.exports = {
   smtp: {
     user: String(process.env.SMTP_USER || '').trim(),
     pass: String(process.env.SMTP_PASS || '').replace(/\s+/g, ''),
-    from: String(process.env.MAIL_FROM || 'ระบบยืม-คืน อุปกรณ์ IoT').trim()
+    from: String(process.env.MAIL_FROM || 'ระบบยืม-คืน อุปกรณ์ IOT').trim()
   },
   otpSecret: process.env.OTP_SECRET || process.env.JWT_SECRET || 'development-only-otp-secret'
 };

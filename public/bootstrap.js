@@ -8,6 +8,9 @@
   const appScript=document.createElement('script');
   appScript.src='/app.js?v=language-v1';
   appScript.onload=()=>{
+    const chatScript=document.createElement('script');
+    chatScript.src='/chat.js?v=3';
+    document.body.appendChild(chatScript);
     const googleScript=document.createElement('script');
     googleScript.src='/google-login.js?v=language-v1';
     document.body.appendChild(googleScript);
